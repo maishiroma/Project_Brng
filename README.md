@@ -35,3 +35,5 @@ This project will span __two__ repositories:
 - [Docs](./Docs): Contains documention on how to deploy the server as well as some technical documentation on the game itself.
 - [Game](./Game): Source folder for the UE4 project
 - [ServerInfra](./ServerInfra): Terraform code that will be used to deploy a simple server to host the game
+
+> Note: In order to properly interact with the repository, one must leverage this external [plugin](https://github.com/sinbad/lfs-folderstore) to access an external Git LFS server. Please consult @maishiroma for getting access to this folder
