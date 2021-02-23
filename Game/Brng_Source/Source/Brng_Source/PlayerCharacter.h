@@ -28,8 +28,22 @@ class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
 private:
 	GENERATED_BODY()
 
+	// Sets what boomerang blueprint one will use
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		TSubclassOf<class ABoomerang> NormalBoomerangClass;
+
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		TSubclassOf<class ABoomerang> PowerBoomerangClass;
+
+	bool isHolding;
+
+	float currTimeCharging;
+
 	// The Update method; controls what this class does on each tick
 	virtual void Tick(float DeltaSeconds) override;
+
+	// Grabs the player input
+	virtual void SetupPlayerInputComponent(class UInputComponent* playerInputComponent) override;
 
 	// Controls left/right movement
 	void MoveHorizontal(float Value);
@@ -37,14 +51,12 @@ private:
 	// Shoot Boomerang
 	void ThrowBoomerang();
 
-	UPROPERTY(EditAnywhere, Category = "Shooting")
-	TSubclassOf<class ABoomerang> BoomerangClass;
-
-	// Grabs the player input
-	virtual void SetupPlayerInputComponent(class UInputComponent* playerInputComponent) override;
+	// Shoot a stronger boomerang
+	void ThrowPowerBoomerang();
 
 protected:
 	
+	// The current direction the player is facing
 	UPROPERTY(VisibleAnywhere, Category = "Movement")
 	int currDir;
 
@@ -53,7 +65,11 @@ public:
 	// Constructor for this class; sets defaults
 	APlayerCharacter();
 
+	// The speed at which the player can throw their boomerang
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float throwSpeed;
+
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float timeToCharge;
 	
 };
