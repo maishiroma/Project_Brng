@@ -15,8 +15,15 @@ APlayerCharacter::APlayerCharacter()
 
 	// Set the default facing direction
 	currDir = 1;
+
+	// Sets all other variables
+	
+	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
+	maxThrowEnergy = 100.0f;
 	isHolding = false;
 	currTimeCharging = 0.0f;
+	currTimeToRecharge = 0.0f;
+	currEnergy = maxThrowEnergy;
 }
 
 void APlayerCharacter::Tick(float DeltaSeconds)
@@ -27,6 +34,18 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 	{
 		// If we are holding down the power boomerang key, we increment the time
 		currTimeCharging += DeltaSeconds;
+	}
+
+	// Recharge boomerange throw energy
+	if (currEnergy < maxThrowEnergy)
+	{
+		currTimeToRecharge += DeltaSeconds;
+
+		if (currTimeToRecharge >= timeOfCooldown)
+		{
+			currEnergy = FMath::Clamp(currEnergy + throwEnergyRecoverAmount, 0.0f, maxThrowEnergy);
+			currTimeToRecharge = 0.0f;
+		}
 	}
 }
 
@@ -46,7 +65,7 @@ void APlayerCharacter::MoveHorizontal(float Value)
 // Shoots the boomerang outwards
 void APlayerCharacter::ThrowBoomerang()
 {
-	if (NormalBoomerangClass != nullptr)
+	if (NormalBoomerangClass != nullptr && currEnergy > 0.0f)
 	{
 		// Places the Boomerang in front of the player to start its movement
 		FTransform BoomerangSpawnTransform;
@@ -59,13 +78,15 @@ void APlayerCharacter::ThrowBoomerang()
 
 		// Once we are done, we then need to tell the object to finish spawning
 		UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+
+		currEnergy -= throwEnergyCost;
 	}
 	
 }
 
 void APlayerCharacter::ThrowPowerBoomerang()
 {
-	if (PowerBoomerangClass != nullptr && this->GetVelocity().IsNearlyZero() == true)
+	if (PowerBoomerangClass != nullptr && this->GetVelocity().IsNearlyZero() == true && currEnergy > 0.0f)
 	{
 		// Toggles between true and false whenever this is pressed and released (as long as the player is not moving)
 		isHolding = !isHolding;
@@ -87,6 +108,9 @@ void APlayerCharacter::ThrowPowerBoomerang()
 
 				// Once we are done, we then need to tell the object to finish spawning
 				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+
+				// For now, we double the energe cost to throw a power boomerang
+				currEnergy -= 2.0f * throwEnergyCost;
 			}
 			currTimeCharging = 0.0f;
 		}

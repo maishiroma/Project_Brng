@@ -35,9 +35,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		TSubclassOf<class ABoomerang> PowerBoomerangClass;
 
+	// Is the player holding down the shoot button?
 	bool isHolding;
 
+	// How long has the player held down the button?
 	float currTimeCharging;
+
+	// Current length of time during boomerang recharge
+	float currTimeToRecharge;
 
 	// The Update method; controls what this class does on each tick
 	virtual void Tick(float DeltaSeconds) override;
@@ -58,7 +63,11 @@ protected:
 	
 	// The current direction the player is facing
 	UPROPERTY(VisibleAnywhere, Category = "Movement")
-	int currDir;
+		int currDir;
+
+	// The max number of energy that the player has to throw boomerangs
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Shooting")
+		float maxThrowEnergy;
 
 public:
 
@@ -69,7 +78,24 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float throwSpeed;
 
+	// How long does it take to throw a power boomerang?
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float timeToCharge;
+		
+	// How long does the player regen uses of shooting?
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float timeOfCooldown;
+
+	// The amount of energy to throw a boomerang
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float throwEnergyCost;
 	
+	// The amount of energy recovered during a cooldown
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float throwEnergyRecoverAmount;
+
+	// The amount of energy the player has left
+	UPROPERTY(BlueprintReadOnly, Category = "Shooting")
+		float currEnergy;
+
 };
