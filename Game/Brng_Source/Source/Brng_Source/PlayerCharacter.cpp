@@ -20,6 +20,7 @@ APlayerCharacter::APlayerCharacter()
 	
 	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
 	maxThrowEnergy = 100.0f;
+	chargeMovementFactor = 2.0f;
 	isHolding = false;
 	currTimeCharging = 0.0f;
 	currTimeToRecharge = 0.0f;
@@ -52,6 +53,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 // Handles's the player movement
 void APlayerCharacter::MoveHorizontal(float Value)
 {
+	// If the player is charging, they slow down drastically
 	if (Value != 0.0f)
 	{
 		// We need to create an instance of this first so we can use the sign function
@@ -59,13 +61,20 @@ void APlayerCharacter::MoveHorizontal(float Value)
 		currDir = converter.Sign();
 	}
 
-	AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
+	if (isHolding == false)
+	{
+		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
+	}
+	else
+	{
+		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value / chargeMovementFactor);
+	}
 }
 
 // Shoots the boomerang outwards
 void APlayerCharacter::ThrowBoomerang()
 {
-	if (NormalBoomerangClass != nullptr && currEnergy > 0.0f)
+	if (NormalBoomerangClass != nullptr && CheckIfEnoughEnergy(throwEnergyCost))
 	{
 		// Places the Boomerang in front of the player to start its movement
 		FTransform BoomerangSpawnTransform;
@@ -86,17 +95,13 @@ void APlayerCharacter::ThrowBoomerang()
 
 void APlayerCharacter::ThrowPowerBoomerang()
 {
-	if (PowerBoomerangClass != nullptr && this->GetVelocity().IsNearlyZero() == true && currEnergy > 0.0f)
+	if (PowerBoomerangClass != nullptr)
 	{
-		// Toggles between true and false whenever this is pressed and released (as long as the player is not moving)
-		isHolding = !isHolding;
-
-		// If the player just released the button
-		if (isHolding == false)
+		if (isHolding == true)
 		{
-			// If we held the button long enough, we will throw a strong boomerang
-			if (currTimeCharging >= timeToCharge)
+			if (currTimeCharging >= timeToCharge && CheckIfEnoughEnergy(throwEnergyCost * 2.0f))
 			{
+				// If we held the button long enough, we will throw a strong boomerang
 				// Places the Boomerang in front of the player to start its movement
 				FTransform BoomerangSpawnTransform;
 				BoomerangSpawnTransform.SetLocation((currDir * GetActorForwardVector()) * 100.0f + GetActorLocation());
@@ -112,7 +117,15 @@ void APlayerCharacter::ThrowPowerBoomerang()
 				// For now, we double the energe cost to throw a power boomerang
 				currEnergy -= 2.0f * throwEnergyCost;
 			}
+
+			// Regardless if the player held long enough or had enough energy, we reset the stats
+			isHolding = false;
 			currTimeCharging = 0.0f;
+		}
+		else
+		{
+			// The player is now holding onto the button
+			isHolding = true;
 		}
 	}
 }
@@ -129,4 +142,16 @@ void APlayerCharacter::SetupPlayerInputComponent(class UInputComponent* playerIn
 	
 	playerInputComponent->BindAction("Fire", IE_Pressed, this, &APlayerCharacter::ThrowPowerBoomerang);
 	playerInputComponent->BindAction("Fire", IE_Released, this, &APlayerCharacter::ThrowPowerBoomerang);
+}
+
+// Checks if the player has enough energy to throw a boomerang
+// Returns true if it can
+// Helper method
+bool APlayerCharacter::CheckIfEnoughEnergy(float cost)
+{
+	if (currEnergy - cost < 0.0f)
+	{
+		return false;
+	}
+	return true;
 }

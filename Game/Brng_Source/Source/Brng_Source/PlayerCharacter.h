@@ -59,6 +59,9 @@ private:
 	// Shoot a stronger boomerang
 	void ThrowPowerBoomerang();
 
+	// Checks if the player has enough energy to throw aa boomerang
+	bool CheckIfEnoughEnergy(float cost);
+
 protected:
 	
 	// The current direction the player is facing
@@ -73,6 +76,11 @@ public:
 
 	// Constructor for this class; sets defaults
 	APlayerCharacter();
+
+	// Defines a range that the variable can take on
+	// In this case, the modifier factor cannot go lower than 1.0
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0", ClampMax = "100.0"))
+		float chargeMovementFactor;
 
 	// The speed at which the player can throw their boomerang
 	UPROPERTY(EditAnywhere, Category = "Shooting")
