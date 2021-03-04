@@ -24,22 +24,30 @@ private:
 	// A ref to the lerpedX value that was gotten
 	float lerpedX;
 
+	// Has the boomerang reversed directions?
+	bool hasReversed;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Pointer to the visual part of the boomerang
 	UPROPERTY(EditAnywhere, Category = "Components")
 		UPaperSpriteComponent* BoomerangSprite;
 
+	// Movement logic pointer
 	UPROPERTY(EditAnywhere, Category = "Components")
 		UProjectileMovementComponent* BoomerangMovement;
 
+	// How long does it take for the boomerang to reverse direction
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		float timeToReverse;
 
-	UPROPERTY(VisibleAnywhere, Category = "Movement")
-		bool hasSwitched;
+	// This handles how fast the boomerang reaches its top speed
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.01", ClampMax = "1.0"))
+		float boomerangAcceleration;
 
+	// Delegate function that handles actor collisions
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 

@@ -14,19 +14,20 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationRoll = false;
 
 	// Set the default facing direction
-	currDir = 1;
+	currForwardDirection = 1;
 
 	// Sets all other variables
-	
-	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
-	maxThrowEnergy = 100.0f;
-	chargeMovementFactor = 2.0f;
+	chargeMoveSlowFactor = 2.0f;
 	isHolding = false;
 	currTimeCharging = 0.0f;
 	currTimeToRecharge = 0.0f;
+
+	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
+	maxThrowEnergy = 100.0f;
 	currEnergy = maxThrowEnergy;
 }
 
+// Handles timed events
 void APlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -42,7 +43,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 	{
 		currTimeToRecharge += DeltaSeconds;
 
-		if (currTimeToRecharge >= timeOfCooldown)
+		if (currTimeToRecharge >= coolDownTime)
 		{
 			currEnergy = FMath::Clamp(currEnergy + throwEnergyRecoverAmount, 0.0f, maxThrowEnergy);
 			currTimeToRecharge = 0.0f;
@@ -58,7 +59,7 @@ void APlayerCharacter::MoveHorizontal(float Value)
 	{
 		// We need to create an instance of this first so we can use the sign function
 		TBigInt<64, true> converter = FMath::FloorToInt(Value);
-		currDir = converter.Sign();
+		currForwardDirection = converter.Sign();
 	}
 
 	if (isHolding == false)
@@ -67,7 +68,7 @@ void APlayerCharacter::MoveHorizontal(float Value)
 	}
 	else
 	{
-		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value / chargeMovementFactor);
+		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value / chargeMoveSlowFactor);
 	}
 }
 
@@ -78,12 +79,12 @@ void APlayerCharacter::ThrowBoomerang()
 	{
 		// Places the Boomerang in front of the player to start its movement
 		FTransform BoomerangSpawnTransform;
-		BoomerangSpawnTransform.SetLocation((currDir * GetActorForwardVector()) * 100.0f + GetActorLocation());
+		BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
 		BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 		
 		// In order to set the movement direction of the projectile dynamically, we need to use this function
 		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
-		instance->Initialize(throwSpeed, currDir);
+		instance->Initialize(throwSpeed, currForwardDirection);
 
 		// Once we are done, we then need to tell the object to finish spawning
 		UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
@@ -93,23 +94,24 @@ void APlayerCharacter::ThrowBoomerang()
 	
 }
 
+// Handles the logic for power boomerangs
 void APlayerCharacter::ThrowPowerBoomerang()
 {
 	if (PowerBoomerangClass != nullptr)
 	{
 		if (isHolding == true)
 		{
-			if (currTimeCharging >= timeToCharge && CheckIfEnoughEnergy(throwEnergyCost * 2.0f))
+			if (currTimeCharging >= timePowerThrow && CheckIfEnoughEnergy(throwEnergyCost * 2.0f))
 			{
 				// If we held the button long enough, we will throw a strong boomerang
 				// Places the Boomerang in front of the player to start its movement
 				FTransform BoomerangSpawnTransform;
-				BoomerangSpawnTransform.SetLocation((currDir * GetActorForwardVector()) * 100.0f + GetActorLocation());
+				BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
 				BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 
 				// In order to set the movement direction of the projectile dynamically, we need to use this function
 				ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
-				instance->Initialize(throwSpeed * 2.0f, currDir);
+				instance->Initialize(throwSpeed * 2.0f, currForwardDirection);
 
 				// Once we are done, we then need to tell the object to finish spawning
 				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
@@ -140,8 +142,8 @@ void APlayerCharacter::SetupPlayerInputComponent(class UInputComponent* playerIn
 
 	playerInputComponent->BindAction("Fire", IE_Pressed, this, &APlayerCharacter::ThrowBoomerang);
 	
-	playerInputComponent->BindAction("Fire", IE_Pressed, this, &APlayerCharacter::ThrowPowerBoomerang);
-	playerInputComponent->BindAction("Fire", IE_Released, this, &APlayerCharacter::ThrowPowerBoomerang);
+	playerInputComponent->BindAction("Fire_2", IE_Pressed, this, &APlayerCharacter::ThrowPowerBoomerang);
+	playerInputComponent->BindAction("Fire_2", IE_Released, this, &APlayerCharacter::ThrowPowerBoomerang);
 }
 
 // Checks if the player has enough energy to throw a boomerang

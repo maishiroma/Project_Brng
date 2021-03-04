@@ -28,13 +28,6 @@ class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
 private:
 	GENERATED_BODY()
 
-	// Sets what boomerang blueprint one will use
-	UPROPERTY(EditAnywhere, Category = "Shooting")
-		TSubclassOf<class ABoomerang> NormalBoomerangClass;
-
-	UPROPERTY(EditAnywhere, Category = "Shooting")
-		TSubclassOf<class ABoomerang> PowerBoomerangClass;
-
 	// Is the player holding down the shoot button?
 	bool isHolding;
 
@@ -43,6 +36,9 @@ private:
 
 	// Current length of time during boomerang recharge
 	float currTimeToRecharge;
+
+	// The current direction the player is facing
+	int currForwardDirection;
 
 	// The Update method; controls what this class does on each tick
 	virtual void Tick(float DeltaSeconds) override;
@@ -63,41 +59,22 @@ private:
 	bool CheckIfEnoughEnergy(float cost);
 
 protected:
+
+	// Sets what boomerang blueprint one will use
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		TSubclassOf<class ABoomerang> NormalBoomerangClass;
+
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		TSubclassOf<class ABoomerang> PowerBoomerangClass;
 	
-	// The current direction the player is facing
-	UPROPERTY(VisibleAnywhere, Category = "Movement")
-		int currDir;
-
-	// The max number of energy that the player has to throw boomerangs
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Shooting")
-		float maxThrowEnergy;
-
-public:
-
-	// Constructor for this class; sets defaults
-	APlayerCharacter();
-
-	// Defines a range that the variable can take on
-	// In this case, the modifier factor cannot go lower than 1.0
-	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0", ClampMax = "100.0"))
-		float chargeMovementFactor;
-
 	// The speed at which the player can throw their boomerang
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float throwSpeed;
-
-	// How long does it take to throw a power boomerang?
-	UPROPERTY(EditAnywhere, Category = "Shooting")
-		float timeToCharge;
-		
-	// How long does the player regen uses of shooting?
-	UPROPERTY(EditAnywhere, Category = "Shooting")
-		float timeOfCooldown;
-
+	
 	// The amount of energy to throw a boomerang
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float throwEnergyCost;
-	
+
 	// The amount of energy recovered during a cooldown
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float throwEnergyRecoverAmount;
@@ -105,5 +82,27 @@ public:
 	// The amount of energy the player has left
 	UPROPERTY(BlueprintReadOnly, Category = "Shooting")
 		float currEnergy;
+	
+	// The max number of energy that the player has to throw boomerangs
+	UPROPERTY(BlueprintReadOnly, Category = "Shooting")
+		float maxThrowEnergy;
 
+	// How long does the player regen uses of shooting?
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float coolDownTime;
+
+	// How long does it take to throw a power boomerang?
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+		float timePowerThrow;
+
+	// Defines a range that the variable can take on
+	// In this case, the modifier factor cannot go lower than 1.0
+	// What is the movement penalty while charging a shot?
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0", ClampMax = "100.0"))
+		float chargeMoveSlowFactor;
+
+public:
+
+	// Constructor for this class; sets defaults
+	APlayerCharacter();
 };

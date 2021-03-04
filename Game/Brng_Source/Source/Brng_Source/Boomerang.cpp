@@ -16,11 +16,11 @@ ABoomerang::ABoomerang()
 	// Defaults for Blueprints
 	BoomerangMovement->ProjectileGravityScale = 0.0f;
 
-	// Private Variablles
-	hasSwitched = false;
+	// Private Variables
 	timeElapsed = 0.0f;
 	initialMoveDir = 1.0f;
 	lerpedX = 0.0f;
+	hasReversed = false;
 
 	SetRootComponent(BoomerangSprite);
 }
@@ -43,19 +43,30 @@ void ABoomerang::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	// Since this is a boomerang, it should return back in the opposite direction it was thrown
-	if (timeElapsed > timeToReverse && hasSwitched == false) 
+	if (timeElapsed > timeToReverse)
 	{
-		// After a set amount of time passes, we reverse the direction of the boomerang completly
-		BoomerangMovement->SetVelocityInLocalSpace(FVector(initialMoveDir * -1.0f, 0.0f, 0.0f));
-		hasSwitched = true;
+		if (hasReversed == false)
+		{
+			// Once we initiated the reverse movement, we set the lerp to be the opposite of the moveDir
+			// This is done so the movement backwards is faster + less stalling
+			lerpedX = -initialMoveDir;
+			hasReversed = true;
+		}
+		
+		// We lerp between the current direction and the inverse direction
+		lerpedX = FMath::Lerp(lerpedX, -initialMoveDir, boomerangAcceleration);
+		
+		// To make the boomerang go faster gradually, we use add force to gradually speed up the boomerang
+		BoomerangMovement->AddForce(FVector(lerpedX * BoomerangMovement->InitialSpeed, 0.0f, 0.0f));
 	}
 	else
 	{
 		// We lerp between the current direction and the inverse direction
-		lerpedX = FMath::Lerp(lerpedX, initialMoveDir * -1.0f, 0.01f);
-
+		lerpedX = FMath::Lerp(lerpedX, -initialMoveDir, boomerangAcceleration);
+		
 		// To preserve the speed of the boomerang, we need to times our lerped value back to the initial speed of the boomerang
 		BoomerangMovement->SetVelocityInLocalSpace(FVector(lerpedX * BoomerangMovement->InitialSpeed, 0.0f, 0.0f));
+
 		timeElapsed += DeltaTime;
 	}
 }
@@ -67,7 +78,7 @@ void ABoomerang::Initialize(float moveSpeed, int moveDir)
 	{
 		// Sets up the movement component
 		BoomerangMovement->InitialSpeed = moveSpeed;
-		BoomerangMovement->MaxSpeed = moveSpeed;
+		BoomerangMovement->MaxSpeed = moveSpeed * 10.0f;
 		BoomerangMovement->SetVelocityInLocalSpace(FVector(moveDir, 0.0f, 0.0f));
 
 		// Sets up private variables
