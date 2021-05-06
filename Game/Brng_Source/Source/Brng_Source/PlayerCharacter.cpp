@@ -4,7 +4,10 @@
 #include "PlayerCharacter.h"
 
 APlayerCharacter::APlayerCharacter()
-{
+{	
+	bReplicates = true;
+	
+	// Player Values
 	// https://answers.unrealengine.com/questions/413007/whats-with-the-pitch-yaw-and-roll.html
 	// X Axis = Roll; Y Axis = Pitch; Z Axis = Yaw
 
@@ -25,6 +28,43 @@ APlayerCharacter::APlayerCharacter()
 	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
 	maxThrowEnergy = 100.0f;
 	currEnergy = maxThrowEnergy;
+
+}
+
+// Handles start events
+void APlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	// Because BeginPlay is ran multiple times in a multiplayer game, we want to make sure some things are only spawned once
+	// As such, we can use IsLocallyControlled to make sure that only one thing is created
+	// https://answers.unrealengine.com/questions/396227/hud-added-multiple-times-in-multiplayer-network.html
+	if (IsLocallyControlled()) {
+		
+		// Spawns and sets the camera position at the current player
+		if (PlayerCamClass != nullptr)
+		{
+			// Sets the parent object at origin
+			FTransform defaultPos;
+			defaultPos.SetLocation(FVector(0, 0, 0));
+			PlayerCam = GetWorld()->SpawnActor<AMulti_Camera>(PlayerCamClass, defaultPos);
+
+			// We set the actual camera, which is a child component of the camera we pass in to be the new pos that we passed in
+			USceneComponent* camera = Cast<USceneComponent>(PlayerCam->GetComponentByClass(UCameraComponent::StaticClass()));
+			camera->SetRelativeLocation(PlayerCameraPosition);
+
+			GetWorld()->GetFirstPlayerController()->SetViewTargetWithBlend(PlayerCam);
+		}
+
+		// Spawns the HUD and associates it with the current player
+		// https://answers.unrealengine.com/questions/440581/how-to-create-a-umg-widget-instance-using-c.html
+		if (PlayerHUDClass != nullptr)
+		{
+			PlayerHUD = CreateWidget<UCustomPlayerHUD>(GetWorld(), PlayerHUDClass);
+			PlayerHUD->owningPlayer = this;
+			PlayerHUD->AddToViewport();
+		}
+	}
 }
 
 // Handles timed events
@@ -51,15 +91,38 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 	}
 }
 
+// Using the passed in movement, we turn the player around
+void APlayerCharacter::TurnPlayer(float MoveDir)
+{
+	// We need to create an instance of this first so we can use the sign function
+	TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
+	currForwardDirection = converter.Sign();
+}
+
+// Validates that the turn was correct
+bool APlayerCharacter::Server_TurnPlayer_Validate(float MoveDir)
+{
+	return true;
+}
+
+// Server RPC to call this onto the server as well
+void APlayerCharacter::Server_TurnPlayer_Implementation(float MoveDir)
+{
+	TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
+	currForwardDirection = converter.Sign();
+}
+
 // Handles's the player movement
 void APlayerCharacter::MoveHorizontal(float Value)
 {
 	// If the player is charging, they slow down drastically
 	if (Value != 0.0f)
 	{
-		// We need to create an instance of this first so we can use the sign function
-		TBigInt<64, true> converter = FMath::FloorToInt(Value);
-		currForwardDirection = converter.Sign();
+		TurnPlayer(Value);
+		if (!HasAuthority()) 
+		{
+			Server_TurnPlayer(Value);
+		}
 	}
 
 	if (isHolding == false)
@@ -73,6 +136,7 @@ void APlayerCharacter::MoveHorizontal(float Value)
 }
 
 // Shoots the boomerang outwards
+// To replicate, make sure replicates and replicate movement are toggled in BP (server -> client)
 void APlayerCharacter::ThrowBoomerang()
 {
 	if (NormalBoomerangClass != nullptr && CheckIfEnoughEnergy(throwEnergyCost))
@@ -90,8 +154,30 @@ void APlayerCharacter::ThrowBoomerang()
 		UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
 
 		currEnergy -= throwEnergyCost;
+
+		// Checks if the current cliet is a server instance. If not, we want to call the servr RPC
+		// We can also do GetWorld()->IsServer()
+		// Another way is GetLocalRole() > ROLE_AUTHORITY
+		if (!HasAuthority())
+		{
+			Server_ThrowBoomerang(BoomerangSpawnTransform);
+		}
 	}
 	
+}
+
+// Validate the Server RPC call of throwing a boomerang
+bool APlayerCharacter::Server_ThrowBoomerang_Validate(FTransform boomerangSpawnTransform)
+{
+	return true;
+}
+
+// Server RPC Function; This spawns the projectile onto the server
+void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerangSpawnTransform)
+{
+	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
+	instance->Initialize(throwSpeed, currForwardDirection);
+	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
 }
 
 // Handles the logic for power boomerangs
@@ -118,6 +204,12 @@ void APlayerCharacter::ThrowPowerBoomerang()
 
 				// For now, we double the energe cost to throw a power boomerang
 				currEnergy -= 2.0f * throwEnergyCost;
+
+				// Server RPC to make sure clients spawn the boomerang on the server
+				if (!HasAuthority())
+				{
+					Server_ThrowPowerBoomerang(BoomerangSpawnTransform);
+				}
 			}
 
 			// Regardless if the player held long enough or had enough energy, we reset the stats
@@ -130,6 +222,20 @@ void APlayerCharacter::ThrowPowerBoomerang()
 			isHolding = true;
 		}
 	}
+}
+
+// Checker to make sure that the server received the message properly
+bool APlayerCharacter::Server_ThrowPowerBoomerang_Validate(FTransform boomerangSpawnTransform)
+{
+	return true;
+}
+
+// Server RPC to throw the power boomerang
+void APlayerCharacter::Server_ThrowPowerBoomerang_Implementation(FTransform boomerangSpawnTransform)
+{
+	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
+	instance->Initialize(throwSpeed * 2.0f, currForwardDirection);
+	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
 }
 
 // Binds the player controls to specific methods and keys
@@ -156,4 +262,17 @@ bool APlayerCharacter::CheckIfEnoughEnergy(float cost)
 		return false;
 	}
 	return true;
+}
+
+// Special Function to declare when we want to make specific parameters replicated
+// Refer to https://docs.unrealengine.com/4.26/en-US/InteractiveExperiences/Networking/Actors/Properties/ for more details
+void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Specify all of the parameters that you want to replicate 
+	DOREPLIFETIME(APlayerCharacter, currForwardDirection);
+	DOREPLIFETIME(APlayerCharacter, isHolding);
+	DOREPLIFETIME(APlayerCharacter, currTimeCharging);
+	DOREPLIFETIME(APlayerCharacter, currTimeToRecharge);
 }

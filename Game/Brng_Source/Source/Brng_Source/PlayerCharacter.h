@@ -12,11 +12,17 @@
 
 #include "CoreMinimal.h"
 #include "PaperCharacter.h"
+#include "Blueprint/UserWidget.h" 
+#include "GameFramework/PlayerController.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
-#include "Kismet/GameplayStatics.h" 
+#include "Kismet/GameplayStatics.h"
+#include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "Math/BigInt.h" 
 #include "Boomerang.h"
+#include "Multi_Camera.h"
+#include "CustomPlayerHUD.h"
+
 #include "PlayerCharacter.generated.h"
 
 /**
@@ -29,16 +35,24 @@ private:
 	GENERATED_BODY()
 
 	// Is the player holding down the shoot button?
-	bool isHolding;
+	UPROPERTY(Replicated)
+		bool isHolding;
 
 	// How long has the player held down the button?
-	float currTimeCharging;
+	UPROPERTY(Replicated)
+		float currTimeCharging;
 
 	// Current length of time during boomerang recharge
-	float currTimeToRecharge;
+	UPROPERTY(Replicated)
+		float currTimeToRecharge;
 
 	// The current direction the player is facing
-	int currForwardDirection;
+	// This needs to be replicated in order to make boomerang throwing work on client to server
+	UPROPERTY(Replicated)
+		int currForwardDirection;
+
+	// Start Function; Runs at the start of the game
+	virtual void BeginPlay() override;
 
 	// The Update method; controls what this class does on each tick
 	virtual void Tick(float DeltaSeconds) override;
@@ -49,6 +63,9 @@ private:
 	// Controls left/right movement
 	void MoveHorizontal(float Value);
 
+	// Turns the player left or right, depending on the current movement
+	void TurnPlayer(float Value);
+
 	// Shoot Boomerang
 	void ThrowBoomerang();
 
@@ -58,7 +75,26 @@ private:
 	// Checks if the player has enough energy to throw aa boomerang
 	bool CheckIfEnoughEnergy(float cost);
 
+	// Pointer to plyer camera
+	AMulti_Camera* PlayerCam;
+	
+	// Pointer to current spawned Player UI Widget
+	UCustomPlayerHUD* PlayerHUD;
+
 protected:
+
+	// To use UMG in codde, you need to add the module to the projectName.Build.cs file
+	// https://nerivec.github.io/old-ue4-wiki/pages/umg-referencing-umg-widgets-in-code.html
+	UPROPERTY(EditAnywhere, Category = "HUD")
+		TSubclassOf<class UCustomPlayerHUD> PlayerHUDClass;
+
+	// Ref to what camera blueprint to use
+	UPROPERTY(EditAnywhere, Category = "Camera")
+		TSubclassOf<class AMulti_Camera> PlayerCamClass;
+
+	// Position of the camera that will be set on start
+	UPROPERTY(EditAnywhere, Category = "Camera")
+		FVector PlayerCameraPosition;
 
 	// Sets what boomerang blueprint one will use
 	UPROPERTY(EditAnywhere, Category = "Shooting")
@@ -100,6 +136,28 @@ protected:
 	// What is the movement penalty while charging a shot?
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0", ClampMax = "100.0"))
 		float chargeMoveSlowFactor;
+
+	// This is a little tricky, so to make a server RPC, we need to know what function we want to use and make sure
+	// That function has the following methods with the EXACT names as shown here
+	// Server (prefix) and _Validate / _Implementation
+	// we do NOT need to implement the top method; this is already done on UE side
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_ThrowBoomerang(FTransform boomerangSpawnTransform);
+	bool Server_ThrowBoomerang_Validate(FTransform boomerangSpawnTransform);
+	void Server_ThrowBoomerang_Implementation(FTransform boomerangSpawnTransform);
+
+	// Server RPC to make sure that the power boomerang works
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_ThrowPowerBoomerang(FTransform boomerangSpawnTransform);
+	bool Server_ThrowPowerBoomerang_Validate(FTransform boomerangSpawnTransform);
+	void Server_ThrowPowerBoomerang_Implementation(FTransform boomerangSpawnTransform);
+
+	// Server RPC for player turning, required for making boomerang throws accurate
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TurnPlayer(float MoveDir);
+	bool Server_TurnPlayer_Validate(float MoveDir);
+	void Server_TurnPlayer_Implementation(float MoveDir);
+
 
 public:
 
