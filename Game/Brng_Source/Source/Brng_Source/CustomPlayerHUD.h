@@ -6,10 +6,6 @@
 #include "Blueprint/UserWidget.h"
 #include "CustomPlayerHUD.generated.h"
 
-/**
- * 
- */
-
 // Need to forward declare this, since this appears before PlayerCharacter in compile order
 class APlayerCharacter;
 

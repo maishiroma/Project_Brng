@@ -2,6 +2,7 @@
 
 
 #include "Boomerang.h"
+#include "PlayerCharacter.h"
 
 // Sets default values
 ABoomerang::ABoomerang()
@@ -17,6 +18,9 @@ ABoomerang::ABoomerang()
 	BoomerangMovement->ProjectileGravityScale = 0.0f;
 
 	// Private Variables
+	normalPower = 10.0f;
+	increasedPower = 50.0f;
+	isPowerBoomerang = false;
 	timeElapsed = 0.0f;
 	initialMoveDir = 1.0f;
 	lerpedX = 0.0f;
@@ -72,7 +76,7 @@ void ABoomerang::Tick(float DeltaTime)
 }
 
 // Initializes the boomerange's properties
-void ABoomerang::Initialize(float moveSpeed, int moveDir)
+void ABoomerang::Initialize(float moveSpeed, int moveDir, AActor* originOwner, bool isPower)
 {
 	if (BoomerangMovement != nullptr)
 	{
@@ -83,15 +87,48 @@ void ABoomerang::Initialize(float moveSpeed, int moveDir)
 
 		// Sets up private variables
 		initialMoveDir = moveDir;
+		isPowerBoomerang = isPower;
 
 		// We do an initial calculation here so that we can lerp on the new value afterwards
 		lerpedX = FMath::Lerp(initialMoveDir, initialMoveDir * -1.0f, 0.01f);
+
+		// Set the original owner who threw this
+		originalThrower = originOwner;
 	}
 }
 
 // Delegated function that is called when this boomerang overlaps another actor
 void ABoomerang::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// By default, it will destroy itself when it hits anything
+	// Easiest is to use tag checking, like in Unity
+	if (OtherComp->GetOwner()->ActorHasTag("Player") == true && originalThrower != nullptr)
+	{
+		// We hit another player
+		if (OtherComp->GetOwner()->GetName() != originalThrower->GetName())
+		{
+			// We get the playerCharacter component and take away health
+			APlayerCharacter* test = Cast<APlayerCharacter>(OtherComp->GetOwner());
+			if (!isPowerBoomerang)
+			{
+				test->DamagePlayer(normalPower);
+			}
+			else
+			{
+				test->DamagePlayer(increasedPower);
+			}
+		}
+	}
+	
+	// On all collisions, it will destroy itself when it hits anything
 	Destroy();
+}
+
+// Used to mark specific attributes as replicated
+void ABoomerang::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Specify all of the parameters that you want to replicate 
+	DOREPLIFETIME(ABoomerang, originalThrower);
+	DOREPLIFETIME(ABoomerang, isPowerBoomerang);
 }

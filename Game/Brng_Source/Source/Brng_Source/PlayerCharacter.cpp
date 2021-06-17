@@ -1,7 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+// To reference any calls to any external methods, place their header file here
+// THIS is how you do ext deps
 #include "PlayerCharacter.h"
+#include "Boomerang.h"
+#include "Multi_Camera.h"
+#include "CustomPlayerHUD.h"
 
 APlayerCharacter::APlayerCharacter()
 {	
@@ -25,9 +29,11 @@ APlayerCharacter::APlayerCharacter()
 	currTimeCharging = 0.0f;
 	currTimeToRecharge = 0.0f;
 
-	// This value is set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
+	// These values are set to 100.0f because of how Unreal's Progress Bar UI works with values between 0 and 1
 	maxThrowEnergy = 100.0f;
 	currEnergy = maxThrowEnergy;
+	maxHealth = 100.0f;
+	currHealth = maxHealth;
 
 }
 
@@ -148,7 +154,7 @@ void APlayerCharacter::ThrowBoomerang()
 		
 		// In order to set the movement direction of the projectile dynamically, we need to use this function
 		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
-		instance->Initialize(throwSpeed, currForwardDirection);
+		instance->Initialize(throwSpeed, currForwardDirection, this, false);
 
 		// Once we are done, we then need to tell the object to finish spawning
 		UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
@@ -176,7 +182,7 @@ bool APlayerCharacter::Server_ThrowBoomerang_Validate(FTransform boomerangSpawnT
 void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
 	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
-	instance->Initialize(throwSpeed, currForwardDirection);
+	instance->Initialize(throwSpeed, currForwardDirection, this, false);
 	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
 }
 
@@ -197,7 +203,7 @@ void APlayerCharacter::ThrowPowerBoomerang()
 
 				// In order to set the movement direction of the projectile dynamically, we need to use this function
 				ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
-				instance->Initialize(throwSpeed * 2.0f, currForwardDirection);
+				instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
 
 				// Once we are done, we then need to tell the object to finish spawning
 				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
@@ -234,7 +240,7 @@ bool APlayerCharacter::Server_ThrowPowerBoomerang_Validate(FTransform boomerangS
 void APlayerCharacter::Server_ThrowPowerBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
 	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
-	instance->Initialize(throwSpeed * 2.0f, currForwardDirection);
+	instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
 	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
 }
 
@@ -264,6 +270,41 @@ bool APlayerCharacter::CheckIfEnoughEnergy(float cost)
 	return true;
 }
 
+
+// Damages the player. If the player health reaches 0, they die
+void APlayerCharacter::DamagePlayer(float modder)
+{
+	currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
+	if (currHealth <= 0.0f)
+	{
+		// Invoke death logic
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("%f"), currHealth);
+	
+	if (!HasAuthority())
+	{
+		Server_DamagePlayer(modder);
+	}
+
+}
+
+// Validates logic in serer RPC
+bool APlayerCharacter::Server_DamagePlayer_Validate(float modder)
+{
+	return true;
+}
+
+// Server RPC to update the server on the health
+void APlayerCharacter::Server_DamagePlayer_Implementation(float modder)
+{
+	currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
+	if (currHealth <= 0.0f)
+	{
+		// Invoke death logic
+	}
+}
+
 // Special Function to declare when we want to make specific parameters replicated
 // Refer to https://docs.unrealengine.com/4.26/en-US/InteractiveExperiences/Networking/Actors/Properties/ for more details
 void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -275,4 +316,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& O
 	DOREPLIFETIME(APlayerCharacter, isHolding);
 	DOREPLIFETIME(APlayerCharacter, currTimeCharging);
 	DOREPLIFETIME(APlayerCharacter, currTimeToRecharge);
+	DOREPLIFETIME(APlayerCharacter, currHealth);
+	DOREPLIFETIME(APlayerCharacter, maxHealth);
 }

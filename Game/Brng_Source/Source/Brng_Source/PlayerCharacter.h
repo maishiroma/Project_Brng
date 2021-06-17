@@ -19,15 +19,13 @@
 #include "Kismet/GameplayStatics.h"
 #include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "Math/BigInt.h" 
-#include "Boomerang.h"
-#include "Multi_Camera.h"
-#include "CustomPlayerHUD.h"
-
 #include "PlayerCharacter.generated.h"
 
-/**
- * 
- */
+// Forward ddeclare these in the header
+class ABoomerang;
+class AMulti_Camera;
+class UCustomPlayerHUD;
+
 UCLASS()
 class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
 {
@@ -123,6 +121,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Shooting")
 		float maxThrowEnergy;
 
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
+		float currHealth;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
+		float maxHealth;
+
 	// How long does the player regen uses of shooting?
 	UPROPERTY(EditAnywhere, Category = "Shooting")
 		float coolDownTime;
@@ -158,9 +162,17 @@ protected:
 	bool Server_TurnPlayer_Validate(float MoveDir);
 	void Server_TurnPlayer_Implementation(float MoveDir);
 
-
 public:
 
 	// Constructor for this class; sets defaults
 	APlayerCharacter();
+
+	// Called to invoke damage on the player
+	void DamagePlayer(float modder);
+
+	// Server RPC to update player health
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_DamagePlayer(float modder);
+	bool Server_DamagePlayer_Validate(float modder);
+	void Server_DamagePlayer_Implementation(float modder);
 };

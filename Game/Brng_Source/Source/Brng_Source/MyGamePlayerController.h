@@ -8,9 +8,6 @@
 #include "GameFramework/PlayerController.h"
 #include "MyGamePlayerController.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class BRNG_SOURCE_API AMyGamePlayerController : public APlayerController
 {

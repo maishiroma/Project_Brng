@@ -3,10 +3,10 @@
 #pragma once
 
 #include "PaperSpriteComponent.h"
+#include "CoreMinimal.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "UObject/ConstructorHelpers.h" 
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Multi_Camera.generated.h"
 
