@@ -6,6 +6,7 @@
 #include "Boomerang.h"
 #include "Multi_Camera.h"
 #include "CustomPlayerHUD.h"
+#include "Brng_SourceGameMode.h"
 
 APlayerCharacter::APlayerCharacter()
 {	
@@ -25,6 +26,7 @@ APlayerCharacter::APlayerCharacter()
 
 	// Sets all other variables
 	chargeMoveSlowFactor = 2.0f;
+	isAlive = true;
 	isHolding = false;
 	currTimeCharging = 0.0f;
 	currTimeToRecharge = 0.0f;
@@ -71,6 +73,10 @@ void APlayerCharacter::BeginPlay()
 			PlayerHUD->AddToViewport();
 		}
 	}
+
+	// Setting up the respawn logic
+	spawnLocation.SetLocation(GetActorLocation());
+	spawnLocation.SetRotation(FQuat(GetActorRotation()));
 }
 
 // Handles timed events
@@ -78,21 +84,24 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (isHolding)
+	if (isAlive)
 	{
-		// If we are holding down the power boomerang key, we increment the time
-		currTimeCharging += DeltaSeconds;
-	}
-
-	// Recharge boomerange throw energy
-	if (currEnergy < maxThrowEnergy)
-	{
-		currTimeToRecharge += DeltaSeconds;
-
-		if (currTimeToRecharge >= coolDownTime)
+		if (isHolding)
 		{
-			currEnergy = FMath::Clamp(currEnergy + throwEnergyRecoverAmount, 0.0f, maxThrowEnergy);
-			currTimeToRecharge = 0.0f;
+			// If we are holding down the power boomerang key, we increment the time
+			currTimeCharging += DeltaSeconds;
+		}
+
+		// Recharge boomerange throw energy
+		if (currEnergy < maxThrowEnergy)
+		{
+			currTimeToRecharge += DeltaSeconds;
+
+			if (currTimeToRecharge >= coolDownTime)
+			{
+				currEnergy = FMath::Clamp(currEnergy + throwEnergyRecoverAmount, 0.0f, maxThrowEnergy);
+				currTimeToRecharge = 0.0f;
+			}
 		}
 	}
 }
@@ -100,9 +109,12 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 // Using the passed in movement, we turn the player around
 void APlayerCharacter::TurnPlayer(float MoveDir)
 {
-	// We need to create an instance of this first so we can use the sign function
-	TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
-	currForwardDirection = converter.Sign();
+	if (isAlive) 
+	{
+		// We need to create an instance of this first so we can use the sign function
+		TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
+		currForwardDirection = converter.Sign();
+	}
 }
 
 // Validates that the turn was correct
@@ -114,30 +126,41 @@ bool APlayerCharacter::Server_TurnPlayer_Validate(float MoveDir)
 // Server RPC to call this onto the server as well
 void APlayerCharacter::Server_TurnPlayer_Implementation(float MoveDir)
 {
-	TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
-	currForwardDirection = converter.Sign();
+	if (isAlive)
+	{
+		TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
+		currForwardDirection = converter.Sign();
+	}
 }
 
 // Handles's the player movement
 void APlayerCharacter::MoveHorizontal(float Value)
 {
-	// If the player is charging, they slow down drastically
-	if (Value != 0.0f)
+	if (isAlive)
 	{
-		TurnPlayer(Value);
-		if (!HasAuthority()) 
+		// If the player is charging, they slow down drastically
+		if (Value != 0.0f)
 		{
-			Server_TurnPlayer(Value);
+			if (!HasAuthority())
+			{
+				// In Client
+				Server_TurnPlayer(Value);
+			}
+			else
+			{
+				// In Server
+				TurnPlayer(Value);
+			}
 		}
-	}
 
-	if (isHolding == false)
-	{
-		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
-	}
-	else
-	{
-		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value / chargeMoveSlowFactor);
+		if (isHolding == false)
+		{
+			AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value);
+		}
+		else
+		{
+			AddMovementInput(FVector(1.0f, 0.0f, 0.0f), Value / chargeMoveSlowFactor);
+		}
 	}
 }
 
@@ -145,28 +168,35 @@ void APlayerCharacter::MoveHorizontal(float Value)
 // To replicate, make sure replicates and replicate movement are toggled in BP (server -> client)
 void APlayerCharacter::ThrowBoomerang()
 {
-	if (NormalBoomerangClass != nullptr && CheckIfEnoughEnergy(throwEnergyCost))
+	if (isAlive)
 	{
-		// Places the Boomerang in front of the player to start its movement
-		FTransform BoomerangSpawnTransform;
-		BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
-		BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
-		
-		// In order to set the movement direction of the projectile dynamically, we need to use this function
-		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
-		instance->Initialize(throwSpeed, currForwardDirection, this, false);
-
-		// Once we are done, we then need to tell the object to finish spawning
-		UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
-
-		currEnergy -= throwEnergyCost;
-
-		// Checks if the current cliet is a server instance. If not, we want to call the servr RPC
-		// We can also do GetWorld()->IsServer()
-		// Another way is GetLocalRole() > ROLE_AUTHORITY
-		if (!HasAuthority())
+		if (NormalBoomerangClass != nullptr && CheckIfEnoughEnergy(throwEnergyCost))
 		{
-			Server_ThrowBoomerang(BoomerangSpawnTransform);
+			// Places the Boomerang in front of the player to start its movement
+			FTransform BoomerangSpawnTransform;
+			BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
+			BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
+
+			// Checks if the current cliet is a server instance. If not, we want to call the servr RPC
+			// We can also do GetWorld()->IsServer()
+			// Another way is GetLocalRole() > ROLE_AUTHORITY
+			if (!HasAuthority())
+			{
+				// On Client
+				Server_ThrowBoomerang(BoomerangSpawnTransform);
+			}
+			else
+			{
+				// On Server
+				// In order to set the movement direction of the projectile dynamically, we need to use this function
+				ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
+				instance->Initialize(throwSpeed, currForwardDirection, this, false);
+
+				// Once we are done, we then need to tell the object to finish spawning
+				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+			}
+
+			currEnergy -= throwEnergyCost;
 		}
 	}
 	
@@ -181,51 +211,61 @@ bool APlayerCharacter::Server_ThrowBoomerang_Validate(FTransform boomerangSpawnT
 // Server RPC Function; This spawns the projectile onto the server
 void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
-	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
-	instance->Initialize(throwSpeed, currForwardDirection, this, false);
-	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+	if (isAlive)
+	{
+		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
+		instance->Initialize(throwSpeed, currForwardDirection, this, false);
+		UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+	}
 }
 
 // Handles the logic for power boomerangs
 void APlayerCharacter::ThrowPowerBoomerang()
 {
-	if (PowerBoomerangClass != nullptr)
+	if (isAlive)
 	{
-		if (isHolding == true)
+		if (PowerBoomerangClass != nullptr)
 		{
-			if (currTimeCharging >= timePowerThrow && CheckIfEnoughEnergy(throwEnergyCost * 2.0f))
+			if (isHolding == true)
 			{
-				// If we held the button long enough, we will throw a strong boomerang
-				// Places the Boomerang in front of the player to start its movement
-				FTransform BoomerangSpawnTransform;
-				BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
-				BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
-
-				// In order to set the movement direction of the projectile dynamically, we need to use this function
-				ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
-				instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
-
-				// Once we are done, we then need to tell the object to finish spawning
-				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
-
-				// For now, we double the energe cost to throw a power boomerang
-				currEnergy -= 2.0f * throwEnergyCost;
-
-				// Server RPC to make sure clients spawn the boomerang on the server
-				if (!HasAuthority())
+				if (currTimeCharging >= timePowerThrow && CheckIfEnoughEnergy(throwEnergyCost * 2.0f))
 				{
-					Server_ThrowPowerBoomerang(BoomerangSpawnTransform);
-				}
-			}
+					// If we held the button long enough, we will throw a strong boomerang
+					// Places the Boomerang in front of the player to start its movement
+					FTransform BoomerangSpawnTransform;
+					BoomerangSpawnTransform.SetLocation((currForwardDirection * GetActorForwardVector()) * 100.0f + GetActorLocation());
+					BoomerangSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 
-			// Regardless if the player held long enough or had enough energy, we reset the stats
-			isHolding = false;
-			currTimeCharging = 0.0f;
-		}
-		else
-		{
-			// The player is now holding onto the button
-			isHolding = true;
+					// Server RPC to make sure clients spawn the boomerang on the server
+					if (!HasAuthority())
+					{
+						// On Client
+						Server_ThrowPowerBoomerang(BoomerangSpawnTransform);
+					}
+					else
+					{
+						// On Server
+						// In order to set the movement direction of the projectile dynamically, we need to use this function
+						ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
+						instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
+
+						// Once we are done, we then need to tell the object to finish spawning
+						UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+					}
+
+					// For now, we double the energe cost to throw a power boomerang
+					currEnergy -= 2.0f * throwEnergyCost;
+				}
+
+				// Regardless if the player held long enough or had enough energy, we reset the stats
+				isHolding = false;
+				currTimeCharging = 0.0f;
+			}
+			else
+			{
+				// The player is now holding onto the button
+				isHolding = true;
+			}
 		}
 	}
 }
@@ -239,9 +279,12 @@ bool APlayerCharacter::Server_ThrowPowerBoomerang_Validate(FTransform boomerangS
 // Server RPC to throw the power boomerang
 void APlayerCharacter::Server_ThrowPowerBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
-	ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
-	instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
-	UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+	if (isAlive)
+	{
+		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
+		instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
+		UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+	}
 }
 
 // Binds the player controls to specific methods and keys
@@ -270,23 +313,66 @@ bool APlayerCharacter::CheckIfEnoughEnergy(float cost)
 	return true;
 }
 
+// Helper function used to remove the player from the game
+// Note that only the server runs this
+void APlayerCharacter::KillPlayer()
+{
+	if (isAlive == true)
+	{
+		isAlive = false;
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+		this->SetActorTickEnabled(false);
+		
+		// To respawn the player, we get the gamemode and we then call the respawn
+		// Note that this only runs on the server
+		// This will also take care of updating the HUD as well!
+		ABrng_SourceGameMode* gm = Cast<ABrng_SourceGameMode>(GetWorld()->GetAuthGameMode());
+		if (gm != nullptr)
+		{
+			gm->Respawn(GetController(), spawnLocation);
+		}
+	}
+}
+
+// Server RPC Validate
+bool APlayerCharacter::Server_KillPlayer_Validate()
+{
+	return true;
+}
+
+// Server RPC to call this on all other clients
+void APlayerCharacter::Server_KillPlayer_Implementation()
+{
+	if (isAlive == true)
+	{
+		this->SetActorHiddenInGame(true);
+		this->SetActorEnableCollision(false);
+		this->SetActorTickEnabled(false);
+	}
+}
 
 // Damages the player. If the player health reaches 0, they die
 void APlayerCharacter::DamagePlayer(float modder)
 {
-	currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
-	if (currHealth <= 0.0f)
+	if (isAlive)
 	{
-		// Invoke death logic
+		if (!HasAuthority())
+		{
+			// On Client
+			Server_DamagePlayer(modder);
+		}
+		else
+		{
+			// On Server
+			currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
+			if (currHealth <= 0.0f)
+			{
+				// Invoke death logic
+				KillPlayer();
+			}
+		}
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("%f"), currHealth);
-	
-	if (!HasAuthority())
-	{
-		Server_DamagePlayer(modder);
-	}
-
 }
 
 // Validates logic in serer RPC
@@ -298,12 +384,17 @@ bool APlayerCharacter::Server_DamagePlayer_Validate(float modder)
 // Server RPC to update the server on the health
 void APlayerCharacter::Server_DamagePlayer_Implementation(float modder)
 {
-	currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
-	if (currHealth <= 0.0f)
+	if (isAlive)
 	{
-		// Invoke death logic
+		currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
+		if (currHealth <= 0.0f)
+		{
+			// Invoke death logic
+			Server_KillPlayer();
+		}
 	}
 }
+
 
 // Special Function to declare when we want to make specific parameters replicated
 // Refer to https://docs.unrealengine.com/4.26/en-US/InteractiveExperiences/Networking/Actors/Properties/ for more details
@@ -318,4 +409,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& O
 	DOREPLIFETIME(APlayerCharacter, currTimeToRecharge);
 	DOREPLIFETIME(APlayerCharacter, currHealth);
 	DOREPLIFETIME(APlayerCharacter, maxHealth);
+	DOREPLIFETIME(APlayerCharacter, isAlive);
+	DOREPLIFETIME(APlayerCharacter, spawnLocation);
 }

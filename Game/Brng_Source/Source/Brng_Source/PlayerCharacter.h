@@ -16,6 +16,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "GameFramework/CharacterMovementComponent.h" 
 #include "Kismet/GameplayStatics.h"
 #include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "Math/BigInt.h" 
@@ -49,6 +50,10 @@ private:
 	UPROPERTY(Replicated)
 		int currForwardDirection;
 
+	// Holds the spawn location of the player
+	UPROPERTY(Replicated)
+		FTransform spawnLocation;
+
 	// Start Function; Runs at the start of the game
 	virtual void BeginPlay() override;
 
@@ -72,6 +77,9 @@ private:
 
 	// Checks if the player has enough energy to throw aa boomerang
 	bool CheckIfEnoughEnergy(float cost);
+
+	// Call to kill a player when they are no longer alive
+	void KillPlayer();
 
 	// Pointer to plyer camera
 	AMulti_Camera* PlayerCam;
@@ -121,9 +129,15 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Shooting")
 		float maxThrowEnergy;
 
+	// Is the player alive?
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
+		bool isAlive;
+
+	// The current amount of health the player has
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
 		float currHealth;
 
+	// The max amount of health the player has at one point
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
 		float maxHealth;
 
@@ -162,6 +176,12 @@ protected:
 	bool Server_TurnPlayer_Validate(float MoveDir);
 	void Server_TurnPlayer_Implementation(float MoveDir);
 
+	//Server RPC to either activate/deacctivate a player
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_KillPlayer();
+	bool Server_KillPlayer_Validate();
+	void Server_KillPlayer_Implementation();
+
 public:
 
 	// Constructor for this class; sets defaults
@@ -175,4 +195,5 @@ public:
 	void Server_DamagePlayer(float modder);
 	bool Server_DamagePlayer_Validate(float modder);
 	void Server_DamagePlayer_Implementation(float modder);
+
 };
