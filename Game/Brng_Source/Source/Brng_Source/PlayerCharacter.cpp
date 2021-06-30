@@ -164,6 +164,15 @@ void APlayerCharacter::MoveHorizontal(float Value)
 	}
 }
 
+// When invoked, disassociates the boomerang with the player
+void APlayerCharacter::SetCurrBoomerangNull()
+{
+	if (currBoomerang != nullptr)
+	{
+		currBoomerang = nullptr;
+	}
+}
+
 // Shoots the boomerang outwards
 // To replicate, make sure replicates and replicate movement are toggled in BP (server -> client)
 void APlayerCharacter::ThrowBoomerang()
@@ -189,11 +198,11 @@ void APlayerCharacter::ThrowBoomerang()
 			{
 				// On Server
 				// In order to set the movement direction of the projectile dynamically, we need to use this function
-				ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
-				instance->Initialize(throwSpeed, currForwardDirection, this, false);
+				currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, BoomerangSpawnTransform);
+				currBoomerang->Initialize(throwSpeed, currForwardDirection, this, false);
 
 				// Once we are done, we then need to tell the object to finish spawning
-				UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+				UGameplayStatics::FinishSpawningActor(currBoomerang, BoomerangSpawnTransform);
 			}
 
 			currEnergy -= throwEnergyCost;
@@ -213,9 +222,9 @@ void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerang
 {
 	if (isAlive)
 	{
-		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
-		instance->Initialize(throwSpeed, currForwardDirection, this, false);
-		UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+		currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
+		currBoomerang->Initialize(throwSpeed, currForwardDirection, this, false);
+		UGameplayStatics::FinishSpawningActor(currBoomerang, boomerangSpawnTransform);
 	}
 }
 
@@ -246,11 +255,11 @@ void APlayerCharacter::ThrowPowerBoomerang()
 					{
 						// On Server
 						// In order to set the movement direction of the projectile dynamically, we need to use this function
-						ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
-						instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
+						currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, BoomerangSpawnTransform);
+						currBoomerang->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
 
 						// Once we are done, we then need to tell the object to finish spawning
-						UGameplayStatics::FinishSpawningActor(instance, BoomerangSpawnTransform);
+						UGameplayStatics::FinishSpawningActor(currBoomerang, BoomerangSpawnTransform);
 					}
 
 					// For now, we double the energe cost to throw a power boomerang
@@ -281,9 +290,49 @@ void APlayerCharacter::Server_ThrowPowerBoomerang_Implementation(FTransform boom
 {
 	if (isAlive)
 	{
-		ABoomerang* instance = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
-		instance->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
-		UGameplayStatics::FinishSpawningActor(instance, boomerangSpawnTransform);
+		currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
+		currBoomerang->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
+		UGameplayStatics::FinishSpawningActor(currBoomerang, boomerangSpawnTransform);
+	}
+}
+
+// Influences the height of the thrown boomerang
+// Note that we simply call a function in the boomerang to perform this action
+void APlayerCharacter::ControlBoomerangHeight(float Value)
+{
+	if (!HasAuthority())
+	{
+		// On Client
+		Server_ControlBoomerangHeight(Value);
+	}
+	else
+	{
+		// On Server
+		if (isAlive)
+		{
+			if (currBoomerang != nullptr)
+			{
+				currBoomerang->ChangeHeight(Value);
+			}
+		}
+	}
+}
+
+// Validation
+bool APlayerCharacter::Server_ControlBoomerangHeight_Validate(float Value)
+{
+	return true;
+}
+
+// Server RPC that is called on client to run this on the server
+void APlayerCharacter::Server_ControlBoomerangHeight_Implementation(float Value)
+{
+	if (isAlive)
+	{
+		if (currBoomerang != nullptr)
+		{
+			currBoomerang->ChangeHeight(Value);
+		}
 	}
 }
 
@@ -293,7 +342,9 @@ void APlayerCharacter::SetupPlayerInputComponent(class UInputComponent* playerIn
 {
 	playerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	playerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	
 	playerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveHorizontal);
+	playerInputComponent->BindAxis("ChangeBoomerangHeight", this, &APlayerCharacter::ControlBoomerangHeight);
 
 	playerInputComponent->BindAction("Fire", IE_Pressed, this, &APlayerCharacter::ThrowBoomerang);
 	
@@ -395,7 +446,6 @@ void APlayerCharacter::Server_DamagePlayer_Implementation(float modder)
 	}
 }
 
-
 // Special Function to declare when we want to make specific parameters replicated
 // Refer to https://docs.unrealengine.com/4.26/en-US/InteractiveExperiences/Networking/Actors/Properties/ for more details
 void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const
@@ -411,4 +461,5 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& O
 	DOREPLIFETIME(APlayerCharacter, maxHealth);
 	DOREPLIFETIME(APlayerCharacter, isAlive);
 	DOREPLIFETIME(APlayerCharacter, spawnLocation);
+	DOREPLIFETIME(APlayerCharacter, currBoomerang);
 }

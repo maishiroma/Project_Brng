@@ -76,7 +76,7 @@ void ABoomerang::Tick(float DeltaTime)
 }
 
 // Initializes the boomerange's properties
-void ABoomerang::Initialize(float moveSpeed, int moveDir, AActor* originOwner, bool isPower)
+void ABoomerang::Initialize(float moveSpeed, int moveDir, APlayerCharacter* originOwner, bool isPower)
 {
 	if (BoomerangMovement != nullptr)
 	{
@@ -94,6 +94,16 @@ void ABoomerang::Initialize(float moveSpeed, int moveDir, AActor* originOwner, b
 
 		// Set the original owner who threw this
 		originalThrower = originOwner;
+	}
+}
+
+// Called in the player character; this influences the direction the boomerang is heading (up/down)
+void ABoomerang::ChangeHeight(float moveDir)
+{
+	// Note that the player can only mod the height of the boomerang when it is first launched
+	if (BoomerangMovement != nullptr && hasReversed == false)
+	{
+		BoomerangMovement->AddForce(FVector(0.0f, 0.0f, heightModSpeed * moveDir));
 	}
 }
 
@@ -118,8 +128,10 @@ void ABoomerang::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor
 			}
 		}
 	}
-	
+
 	// On all collisions, it will destroy itself when it hits anything
+	// As well as tell the original owner to null the pointer to the boomerang out
+	originalThrower->SetCurrBoomerangNull();
 	Destroy();
 }
 

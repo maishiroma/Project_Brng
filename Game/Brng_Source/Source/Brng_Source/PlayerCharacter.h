@@ -54,6 +54,9 @@ private:
 	UPROPERTY(Replicated)
 		FTransform spawnLocation;
 
+	UPROPERTY(Replicated)
+		ABoomerang* currBoomerang;
+
 	// Start Function; Runs at the start of the game
 	virtual void BeginPlay() override;
 
@@ -74,6 +77,9 @@ private:
 
 	// Shoot a stronger boomerang
 	void ThrowPowerBoomerang();
+
+	// Controls the height of the thrown boomerang
+	void ControlBoomerangHeight(float Value);
 
 	// Checks if the player has enough energy to throw aa boomerang
 	bool CheckIfEnoughEnergy(float cost);
@@ -176,6 +182,12 @@ protected:
 	bool Server_TurnPlayer_Validate(float MoveDir);
 	void Server_TurnPlayer_Implementation(float MoveDir);
 
+	// Server RPC to tell server to adjust boomerang height
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_ControlBoomerangHeight(float Value);
+	bool Server_ControlBoomerangHeight_Validate(float Value);
+	void Server_ControlBoomerangHeight_Implementation(float Value);
+
 	//Server RPC to either activate/deacctivate a player
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_KillPlayer();
@@ -189,6 +201,9 @@ public:
 
 	// Called to invoke damage on the player
 	void DamagePlayer(float modder);
+
+	// Sets the current thrown boomerang to null
+	void SetCurrBoomerangNull();
 
 	// Server RPC to update player health
 	UFUNCTION(Server, Reliable, WithValidation)

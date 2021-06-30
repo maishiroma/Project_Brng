@@ -10,6 +10,8 @@
 #include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "Boomerang.generated.h"
 
+class APlayerCharacter;
+
 UCLASS()
 class BRNG_SOURCE_API ABoomerang : public AActor
 {
@@ -31,7 +33,7 @@ private:
 
 	// The original thrower of the object
 	UPROPERTY(Replicated)
-		AActor* originalThrower;
+		APlayerCharacter* originalThrower;
 
 protected:
 	// Called when the game starts or when spawned
@@ -52,6 +54,10 @@ protected:
 	// This handles how fast the boomerang reaches its top speed
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.01", ClampMax = "1.0"))
 		float boomerangAcceleration;
+
+	// How much force is applied to the boomerang when changing its height
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float heightModSpeed;
 
 	// Is this boomerang a powerful one?
 	UPROPERTY(Replicated, EditAnywhere, Category = "Fight")
@@ -77,6 +83,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Prepares the object's variables
-	void Initialize(float moveSpeed, int moveDir, AActor* originOwner, bool isPower);
+	void Initialize(float moveSpeed, int moveDir, APlayerCharacter* originOwner, bool isPower);
 
+	// Changes the height of the boomerang
+	void ChangeHeight(float moveDir);
 };
