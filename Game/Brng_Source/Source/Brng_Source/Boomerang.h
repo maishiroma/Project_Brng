@@ -6,7 +6,11 @@
 #include "GameFramework/Actor.h"
 #include "PaperSpriteComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "Boomerang.generated.h"
+
+class APlayerCharacter;
 
 UCLASS()
 class BRNG_SOURCE_API ABoomerang : public AActor
@@ -26,6 +30,10 @@ private:
 
 	// Has the boomerang reversed directions?
 	bool hasReversed;
+
+	// The original thrower of the object
+	UPROPERTY(Replicated)
+		APlayerCharacter* originalThrower;
 
 protected:
 	// Called when the game starts or when spawned
@@ -47,9 +55,25 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.01", ClampMax = "1.0"))
 		float boomerangAcceleration;
 
+	// How much force is applied to the boomerang when changing its height
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float heightModSpeed;
+
+	// Is this boomerang a powerful one?
+	UPROPERTY(Replicated, EditAnywhere, Category = "Fight")
+		bool isPowerBoomerang;
+
+	// Base power of a standard thhrow
+	UPROPERTY(EditAnywhere, Category = "Fight")
+		float normalPower;
+
+	// Base power of a power throw
+	UPROPERTY(EditAnywhere, Category = "Fight")
+		float increasedPower;
+
 	// Delegate function that handles actor collisions
 	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+		void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 public:	
 	// Sets default values for this actor's properties
@@ -59,6 +83,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Prepares the object's variables
-	void Initialize(float moveSpeed, int moveDir);
+	void Initialize(float moveSpeed, int moveDir, APlayerCharacter* originOwner, bool isPower);
 
+	// Changes the height of the boomerang
+	void ChangeHeight(float moveDir);
 };
