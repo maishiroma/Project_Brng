@@ -17,7 +17,7 @@ AMulti_Camera::AMulti_Camera()
 
 	// https://answers.unrealengine.com/questions/665668/c-attachtocomponent-syntax.html
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	CameraComp->AttachToComponent(CamArm, FAttachmentTransformRules::KeepWorldTransform);
+	CameraComp->SetupAttachment(CamArm);
 }
 
 // Called when the game starts or when spawned
