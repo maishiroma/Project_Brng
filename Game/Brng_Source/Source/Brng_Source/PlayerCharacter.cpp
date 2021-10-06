@@ -36,7 +36,6 @@ APlayerCharacter::APlayerCharacter()
 	currEnergy = maxThrowEnergy;
 	maxHealth = 100.0f;
 	currHealth = maxHealth;
-
 }
 
 // Handles start events
@@ -66,12 +65,7 @@ void APlayerCharacter::BeginPlay()
 
 		// Spawns the HUD and associates it with the current player
 		// https://answers.unrealengine.com/questions/440581/how-to-create-a-umg-widget-instance-using-c.html
-		if (PlayerHUDClass != nullptr)
-		{
-			PlayerHUD = CreateWidget<UCustomPlayerHUD>(GetWorld(), PlayerHUDClass);
-			PlayerHUD->owningPlayer = this;
-			PlayerHUD->AddToViewport();
-		}
+		ReConfigureHUD();
 	}
 
 	// Setting up the respawn logic
@@ -103,6 +97,42 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 				currTimeToRecharge = 0.0f;
 			}
 		}
+	}
+}
+
+// Getters
+float APlayerCharacter::GetCurrHealth() const
+{
+	return currHealth;
+}
+
+float APlayerCharacter::GetCurrEnergy() const
+{
+	return currEnergy;
+}
+
+float APlayerCharacter::GetMaxEnergy() const
+{
+	return maxThrowEnergy;
+}
+
+float APlayerCharacter::GetMaxHealth() const
+{
+	return maxHealth;
+}
+
+bool APlayerCharacter::GetIsAlive() const
+{
+	return isAlive;
+}
+
+void APlayerCharacter::ReConfigureHUD()
+{
+	if (PlayerHUDClass != nullptr)
+	{
+		PlayerHUD = CreateWidget<UCustomPlayerHUD>(GetWorld(), PlayerHUDClass);
+		PlayerHUD->owningPlayer = this;
+		PlayerHUD->AddToViewport();
 	}
 }
 
@@ -371,6 +401,7 @@ void APlayerCharacter::KillPlayer()
 	if (isAlive == true)
 	{
 		isAlive = false;
+		
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
 		this->SetActorTickEnabled(false);
@@ -397,6 +428,8 @@ void APlayerCharacter::Server_KillPlayer_Implementation()
 {
 	if (isAlive == true)
 	{
+		isAlive = false;
+
 		this->SetActorHiddenInGame(true);
 		this->SetActorEnableCollision(false);
 		this->SetActorTickEnabled(false);
