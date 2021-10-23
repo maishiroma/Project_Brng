@@ -2,6 +2,7 @@
 
 
 #include "CustomMenuHUD.h"
+#include "CustomSessionButton.h"
 
 // Constructor
 bool UCustomMenuHUD::Initialize()
@@ -11,12 +12,6 @@ bool UCustomMenuHUD::Initialize()
 	{
 		return false;
 	}
-	
-	// Initialize Listeners for buttons
-	if (Quit_Button != nullptr)
-	{
-		Quit_Button->OnClicked.AddDynamic(this, &UCustomMenuHUD::QuitGame);
-	}
 
 	// Initialize Array for helper
 	RandomWords.Add(FString("Super"));
@@ -25,6 +20,8 @@ bool UCustomMenuHUD::Initialize()
 	RandomWords.Add(FString("Awesome"));
 	RandomWords.Add(FString("Shattering"));
 	RandomWords.Add(FString("Amazing"));
+
+	SessionName_Key = TEXT("servername");
 
 	return true;
 }
@@ -39,17 +36,16 @@ void UCustomMenuHUD::QuitGame()
 // When called, grabs all of the available Sessions
 void UCustomMenuHUD::CreateRoomWidgets(APlayerController* currPlayer)
 {
-	if (SessionResults.Num() > 1)
+	if (SessionResults.Num() > 0)
 	{
-		for (int currIndex = 0; currIndex < SessionResults.Num(); currIndex++);
+		for (int32 currIndex = 0; currIndex < SessionResults.Num(); currIndex++)
 		{
 			if (Session_Widget_Class != nullptr)
 			{
-				UUserWidget* MenuHud = CreateWidget<UUserWidget>(GetWorld(), Session_Widget_Class);
+				// We create a nee btton widget and set it up 
+				UCustomSessionButton* MenuHud = CreateWidget<UCustomSessionButton>(GetWorld(), Session_Widget_Class);
+				MenuHud->SetUpButton(SessionName_Key, SessionResults[currIndex]);
 				MenuHud->SetOwningPlayer(currPlayer);
-				
-				// TODO: Put session data in widget
-				//MenuHud->SessionData
 				MenuHud->AddToViewport();
 
 				Sessions_VerticalBox->AddChild(MenuHud);
@@ -81,7 +77,7 @@ UCanvasPanel* UCustomMenuHUD::SetMenuVisability(UCanvasPanel* MenuToHide, UCanva
 FString UCustomMenuHUD::GenerateRandomRoomName()
 {
 	int randNumb = FMath::FRandRange(0, RandomWords.Num());
-	float ranFloat = FMath::FRandRange(0, 100);
+	int randId = FMath::FRandRange(0, 100);
 
-	return FString("Room-" + RandomWords[randNumb] + "-" + FString::SanitizeFloat(ranFloat));
+	return FString("Room-" + RandomWords[randNumb] + "-" + FString::FromInt(randId));
 }

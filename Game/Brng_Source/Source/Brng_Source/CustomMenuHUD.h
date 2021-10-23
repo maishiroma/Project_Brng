@@ -50,7 +50,7 @@ protected:
 	// Class Settings
 
 	UPROPERTY(EditAnywhere, Category = "HUD")
-		TSubclassOf<class UUserWidget> Session_Widget_Class;
+		TSubclassOf<class UCustomSessionButton> Session_Widget_Class;
 
 	// Widget Methods
 
@@ -103,4 +103,10 @@ protected:
 	// https://answers.unrealengine.com/questions/395322/how-to-use-c-session-search-results-with-blueprint.html
 	UPROPERTY(BlueprintReadWrite)
 		TArray<FBlueprintSessionResult> SessionResults;
+
+public: 
+
+	// The name of the key used to associate with the session room
+	UPROPERTY(BlueprintReadOnly)
+		FName SessionName_Key;
 };
