@@ -140,11 +140,11 @@ protected:
 		bool isAlive;
 
 	// The current amount of health the player has
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
+	UPROPERTY(BlueprintReadOnly, Replicated, BlueprintReadOnly, Category = "Health")
 		float currHealth;
 
 	// The max amount of health the player has at one point
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Health")
+	UPROPERTY(BlueprintReadOnly, Replicated, BlueprintReadOnly, Category = "Health")
 		float maxHealth;
 
 	// How long does the player regen uses of shooting?
@@ -198,6 +198,16 @@ public:
 
 	// Constructor for this class; sets defaults
 	APlayerCharacter();
+
+	// Getters
+	float GetCurrHealth() const;
+	float GetCurrEnergy() const;
+	float GetMaxEnergy() const;
+	float GetMaxHealth() const;
+	bool GetIsAlive() const;
+
+	// Sets up the HUD for the player
+	void ReConfigureHUD();
 
 	// Called to invoke damage on the player
 	void DamagePlayer(float modder);

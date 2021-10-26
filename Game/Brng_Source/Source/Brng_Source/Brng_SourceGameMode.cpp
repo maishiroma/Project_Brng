@@ -23,13 +23,13 @@ void ABrng_SourceGameMode::BeginPlay()
 void ABrng_SourceGameMode::PossessNewPlayer(AController* controller, FTransform location)
 {
 	int retries = 0;
-	APawn* pawn = nullptr;
+	APlayerCharacter* newSpawnedCharacter = nullptr;
 	
 	// We first attempt to spawn the player in a random location, based on the set spawn locations on the map
-	while (pawn == nullptr)
+	while (newSpawnedCharacter == nullptr)
 	{
 		FTransform randSpawnLoc = spawnLocations[FMath::RandRange(0, spawnLocations.Num() - 1)]->GetActorTransform();
-		pawn = GetWorld()->SpawnActor<APawn>(DefaultPawnClass, randSpawnLoc);
+		newSpawnedCharacter = GetWorld()->SpawnActor<APlayerCharacter>(DefaultPawnClass, randSpawnLoc);
 		
 		// If we cannot find a valid spawn point after 5 tries, we default to the original player spawn location
 		// and force a spawn
@@ -37,7 +37,7 @@ void ABrng_SourceGameMode::PossessNewPlayer(AController* controller, FTransform 
 		{
 			FActorSpawnParameters spawnParams;
 			spawnParams.bNoFail = true;
-			pawn = GetWorld()->SpawnActor<APawn>(DefaultPawnClass, location, spawnParams);
+			newSpawnedCharacter = GetWorld()->SpawnActor<APlayerCharacter>(DefaultPawnClass, location, spawnParams);
 		}
 		else
 		{
@@ -46,7 +46,11 @@ void ABrng_SourceGameMode::PossessNewPlayer(AController* controller, FTransform 
 	}
 
 	// Once we respawn, we use the spawned pawn to tell the player controller to possess said pawn
-	controller->Possess(pawn);
+	controller->Possess(newSpawnedCharacter);
+
+	// For some reason, the HUD gets unconfigured for the host player
+	// so we need to make sure we reconfigure the HUD for them whenever they respawn
+	newSpawnedCharacter->ReConfigureHUD();
 }
 
 // We pass in the controller and location to tell the server where to spawn the character
