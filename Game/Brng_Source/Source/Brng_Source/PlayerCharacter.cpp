@@ -130,8 +130,14 @@ void APlayerCharacter::ReConfigureHUD()
 {
 	if (PlayerHUDClass != nullptr)
 	{
-		PlayerHUD = CreateWidget<UCustomPlayerHUD>(GetWorld(), PlayerHUDClass);
-		PlayerHUD->owningPlayer = this;
+		PlayerHUD = CreateWidget<UUserWidget>(GetWorld(), PlayerHUDClass);
+
+		// This allows us to do specific things with specific type of HUDs
+		if (PlayerHUD->IsA(UCustomPlayerHUD::StaticClass()))
+		{
+			Cast<UCustomPlayerHUD>(PlayerHUD)->owningPlayer = this;
+		}
+		
 		PlayerHUD->AddToViewport();
 	}
 }

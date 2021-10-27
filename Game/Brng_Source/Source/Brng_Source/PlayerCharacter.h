@@ -25,7 +25,6 @@
 // Forward ddeclare these in the header
 class ABoomerang;
 class AMulti_Camera;
-class UCustomPlayerHUD;
 
 UCLASS()
 class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
@@ -91,14 +90,14 @@ private:
 	AMulti_Camera* PlayerCam;
 	
 	// Pointer to current spawned Player UI Widget
-	UCustomPlayerHUD* PlayerHUD;
+	UUserWidget* PlayerHUD;
 
 protected:
 
 	// To use UMG in codde, you need to add the module to the projectName.Build.cs file
 	// https://nerivec.github.io/old-ue4-wiki/pages/umg-referencing-umg-widgets-in-code.html
 	UPROPERTY(EditAnywhere, Category = "HUD")
-		TSubclassOf<class UCustomPlayerHUD> PlayerHUDClass;
+		TSubclassOf<class UUserWidget> PlayerHUDClass;
 
 	// Ref to what camera blueprint to use
 	UPROPERTY(EditAnywhere, Category = "Camera")
