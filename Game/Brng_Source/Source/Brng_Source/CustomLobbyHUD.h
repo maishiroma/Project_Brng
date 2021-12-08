@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameState.h"
 #include "CustomLobbyHUD.generated.h"
@@ -23,11 +24,6 @@ class BRNG_SOURCE_API UCustomLobbyHUD : public UUserWidget
 {
 	GENERATED_BODY()
 
-private:
-
-	// Saves ref to current player controller
-	APlayerController* CurrPlayerController;
-
 protected:
 
 	// Override Constructor
@@ -36,6 +32,7 @@ protected:
 	// Tick event for widgets
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
+	// UI Widget Refs
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 		UButton* Queue_Button;
 
@@ -48,16 +45,31 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 		UTextBlock* No_Players_Text;
 
-	// Button Event
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UTextBlock* Loading_Text;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UImage* Loading_BG;
+
+	// Button Events
 	UFUNCTION(BlueprintCallable)
 		void ReturnToMainMenu();
 
-	// Button Event
 	UFUNCTION(BlueprintCallable)
 		TArray<APlayerController*> ReturnClientControllers();
 
 	// Helper Methods
 	void CheckIfEnoughPlayers(int numbPlayers);
+
+	UFUNCTION(BlueprintCallable)
+		void TravelToMainGame();
+
+	UFUNCTION(BlueprintCallable)
+		void EnableLoadingVisuals();
+
+	// Saves ref to current player controller
+	UPROPERTY(BlueprintReadOnly)
+		APlayerController* CurrPlayerController;
 
 public:
 
@@ -67,4 +79,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = UI, meta = (UIMin = 2, UIMax = 4))
 		int MaxNumberPlayers;
+	
+	UPROPERTY(EditAnywhere, Category = Levels)
+		FString LevelToLoad;
 };

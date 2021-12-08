@@ -21,7 +21,10 @@ bool UCustomLobbyHUD::Initialize()
 		CurrPlayerController->bEnableMouseOverEvents = true;
 	}
 
+	// Sets up some general variables and widgets to be hidden
 	Queue_Button->SetVisibility(ESlateVisibility::Hidden);
+	Loading_BG->SetVisibility(ESlateVisibility::Hidden);
+	Loading_Text->SetVisibility(ESlateVisibility::Hidden);
 
 	return true;
 }
@@ -57,6 +60,22 @@ void UCustomLobbyHUD::CheckIfEnoughPlayers(int numbPlayers)
 	}
 }
 
+// When this is called, the server will tell all clients to follow it to said level
+void UCustomLobbyHUD::TravelToMainGame()
+{
+	if (GetWorld()->IsServer())
+	{
+		GetWorld()->ServerTravel(LevelToLoad);
+	}
+}
+
+// When called, will display a loading visual over the client screen to let them know the match is starting
+void UCustomLobbyHUD::EnableLoadingVisuals()
+{
+	Loading_BG->SetVisibility(ESlateVisibility::Visible);
+	Loading_Text->SetVisibility(ESlateVisibility::Visible);
+}
+
 // Returns a list of client controllers
 // Note that only a server can call this method
 TArray<APlayerController*> UCustomLobbyHUD::ReturnClientControllers()
@@ -71,6 +90,7 @@ TArray<APlayerController*> UCustomLobbyHUD::ReturnClientControllers()
 			if (currOne != nullptr && !currOne->IsLocalController())
 			{
 				results.Add(currOne);
+
 			}
 		}
 	}
