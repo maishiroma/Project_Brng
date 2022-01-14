@@ -5,8 +5,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
+#include "GameFramework/Character.h"
 #include "MyGamePlayerController.generated.h"
+
 
 UCLASS()
 class BRNG_SOURCE_API AMyGamePlayerController : public APlayerController

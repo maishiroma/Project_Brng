@@ -3,6 +3,7 @@
 
 #include "MyGamePlayerController.h"
 
+// Constructor
 AMyGamePlayerController::AMyGamePlayerController() {
 
 	// We are going to manage the camera for each player

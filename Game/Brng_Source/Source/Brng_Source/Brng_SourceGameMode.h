@@ -51,4 +51,5 @@ public:
 
 	// Server Function that will respawn in the player after death
 	void Respawn(AController* controller, FTransform location);
+
 };
