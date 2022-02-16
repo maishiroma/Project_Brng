@@ -162,6 +162,12 @@ void APlayerCharacter::ReConfigureHUD()
 		
 		PlayerHUD->AddToViewport();
 	}
+
+	if (MainGameOverlayClass != nullptr)
+	{
+		MainGameHUD = CreateWidget<UUserWidget>(GetWorld(), MainGameOverlayClass);
+		MainGameHUD->AddToViewport();
+	}
 }
 
 // Using the passed in movement, we turn the player around

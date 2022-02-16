@@ -3,6 +3,7 @@
 
 #include "MainGameOverlay.h"
 #include "GameState_Main.h"
+#include "MainPlayerState.h"
 
 // By default, sets up the UI values
 void UMainGameOverlay::NativeOnInitialized()
@@ -11,6 +12,7 @@ void UMainGameOverlay::NativeOnInitialized()
 
 	Countdown_Text->SetText(FText::FromString(""));
 
+	// Wee also grab the GameState as a reference
 	if (GameStateRef == nullptr)
 	{
 		GameStateRef = Cast<AGameState_Main>(GetWorld()->GetGameState());
@@ -21,6 +23,14 @@ void UMainGameOverlay::NativeOnInitialized()
 void UMainGameOverlay::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	
+	DisplayCountdown();
+	FormatPlayerScores();
+}
+
+// Method to display the Game Countdown
+void UMainGameOverlay::DisplayCountdown()
+{
 	if (GameStateRef != nullptr)
 	{
 		if (GameStateRef->GetHasGameStarted() == false)
@@ -41,6 +51,24 @@ void UMainGameOverlay::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 					break;
 			}
 		}
+	}
+}
+
+// Method to display player scores
+void UMainGameOverlay::FormatPlayerScores()
+{
+	if (GameStateRef != nullptr)
+	{
+		FString result = "";
+		for (APlayerState* curr : GameStateRef->PlayerArray)
+		{
+			// Scores should be local to the current player
+			if (Cast<AMainPlayerState>(curr) != nullptr)
+			{
+				result += curr->GetPlayerName() + ": " + FString::FromInt(Cast<AMainPlayerState>(curr)->numbWins) + "\t\t";
+			}
+		}
+		PlayerScores_Text->SetText(FText::FromString(result));
 	}
 }
 

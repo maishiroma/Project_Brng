@@ -92,12 +92,17 @@ private:
 	// Pointer to current spawned Player UI Widget
 	UUserWidget* PlayerHUD;
 
+	UUserWidget* MainGameHUD;
+
 protected:
 
 	// To use UMG in codde, you need to add the module to the projectName.Build.cs file
 	// https://nerivec.github.io/old-ue4-wiki/pages/umg-referencing-umg-widgets-in-code.html
 	UPROPERTY(EditAnywhere, Category = "HUD")
 		TSubclassOf<class UUserWidget> PlayerHUDClass;
+
+	UPROPERTY(EditAnywhere, Category = "HUD")
+		TSubclassOf<class UUserWidget> MainGameOverlayClass;
 
 	// Ref to what camera blueprint to use
 	UPROPERTY(EditAnywhere, Category = "Camera")

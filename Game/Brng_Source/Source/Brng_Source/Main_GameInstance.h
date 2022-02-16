@@ -16,6 +16,7 @@ class BRNG_SOURCE_API UMain_GameInstance : public UGameInstance
 
 public:
 
+	// Constructor
 	UMain_GameInstance();
 
 	// Number of Players that have conneccted

@@ -3,6 +3,7 @@
 
 #include "Main_GameInstance.h"
 
+// Sets up default values
 UMain_GameInstance::UMain_GameInstance()
 {
 	TotalNumberPlayers = 0;

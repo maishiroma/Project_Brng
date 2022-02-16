@@ -8,6 +8,7 @@
 #include "MainGameOverlay.generated.h"
 
 class AGameState_Main;
+class UMain_GameInstance;
 
 /**
  * 
@@ -21,6 +22,12 @@ private:
 	
 	// Timer Function
 	void ClearHUD();
+
+	// Displays the player scores to the screen
+	void FormatPlayerScores();
+
+	// Displays the countdown for the players to see
+	void DisplayCountdown();
 
 	// Ref to GameState
 	AGameState_Main* GameStateRef;
@@ -39,4 +46,8 @@ protected:
 	// Ref to display the countdown text
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 		UTextBlock* Countdown_Text;
+
+	// Ref to the player scores
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UTextBlock* PlayerScores_Text;
 };
