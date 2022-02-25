@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "Engine/EngineTypes.h" 
-#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
 #include "Containers/Array.h"
 #include "Brng_SourceGameMode.generated.h"
+
+class AGameState_Main;
 
 /**
  * The GameMode defines the game being played. It governs the game rules, scoring, what actors
@@ -15,11 +17,14 @@
  *
  */
 UCLASS(minimalapi)
-class ABrng_SourceGameMode : public AGameModeBase
+class ABrng_SourceGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
 private:
+
+	// Ref to the main game state
+	AGameState_Main* GameStateRef;
 
 	// Used to pass in parameters to a delayed function
 	FTimerDelegate RespawnTimerDelegate;
@@ -36,6 +41,9 @@ private:
 	// Start Function; Runs at the start of the game
 	virtual void BeginPlay() override;
 
+	// Tick; Runs every frame
+	virtual void Tick(float DeltaSeconds) override;
+
 	// Creates and Possess the spawned pawn with the given controller
 	UFUNCTION()
 		void PossessNewPlayer(AController* controller, FTransform location);
@@ -47,6 +55,8 @@ protected:
 		float RespawnTime;
 
 public:
+	
+	// Constructor
 	ABrng_SourceGameMode();
 
 	// Server Function that will respawn in the player after death

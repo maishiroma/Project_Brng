@@ -25,12 +25,16 @@
 // Forward declare these in the header
 class ABoomerang;
 class AMulti_Camera;
+class AGameState_Main;
 
 UCLASS()
 class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
 {
 private:
 	GENERATED_BODY()
+
+	// Reference to the main game state
+	AGameState_Main* GameStateRef;
 
 	// Is the player holding down the shoot button?
 	UPROPERTY(Replicated)

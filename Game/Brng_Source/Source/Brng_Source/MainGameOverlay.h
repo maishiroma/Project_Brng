@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "MainGameOverlay.generated.h"
 
 class AGameState_Main;
@@ -29,6 +30,9 @@ private:
 	// Displays the countdown for the players to see
 	void DisplayCountdown();
 
+	// Displays the winner of the match
+	void DisplayWinner();
+
 	// Ref to GameState
 	AGameState_Main* GameStateRef;
 
@@ -50,4 +54,11 @@ protected:
 	// Ref to the player scores
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 		UTextBlock* PlayerScores_Text;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UTextBlock* Loading_Text;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UImage* Loading_BG;
+
 };

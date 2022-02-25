@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameStateBase.h"
+#include "GameFramework/GameState.h"
 #include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "GameState_Lobby.generated.h"
 
@@ -11,7 +11,7 @@
  * 
  */
 UCLASS()
-class BRNG_SOURCE_API AGameState_Lobby : public AGameStateBase
+class BRNG_SOURCE_API AGameState_Lobby : public AGameState
 {
 	GENERATED_BODY()
 

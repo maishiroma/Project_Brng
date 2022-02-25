@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameStateBase.h"
+#include "GameFramework/GameState.h"
 #include "Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "GameState_Main.generated.h"
 
@@ -11,13 +11,16 @@
  * 
  */
 UCLASS()
-class BRNG_SOURCE_API AGameState_Main : public AGameStateBase
+class BRNG_SOURCE_API AGameState_Main : public AGameState
 {
 	GENERATED_BODY()
 
 private:
-	// Timer Function
-	void CountDownTimer();
+	// Countdown for game to start
+	void StartCountDownTimer();
+
+	// Countdoown for game to end
+	void StartFinishCountDownTimer();
 
 	// Timer Handler
 	FTimerHandle MemberTimerHandle;
@@ -32,6 +35,14 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Replicated)
 		bool HasGameStarted;
 
+	// Has the game ended?
+	UPROPERTY(BlueprintReadOnly, Replicated)
+		bool hasGameConcluded;
+
+	// Stores the name of the winner
+	UPROPERTY(BlueprintReadOnly, Replicated)
+		FString gameWinnerName;
+
 public:
 
 	// Constructor
@@ -44,5 +55,18 @@ public:
 	// Getters
 	bool GetHasGameStarted();
 	int GetCurrCoundDown();
+	bool GetHasGameConcluded();
+	FString GetGameWinnerName();
+
+	// Setters
+	void SetGameWinnerName(FString newWinner);
+
+	// The name of the lobby level to load
+	UPROPERTY(EditAnywhere, Category = Levels)
+		FString LobbyLevel;
+
+	// The number of wins it takes to win the game
+	UPROPERTY(EditAnywhere, Category = "Game Loop")
+		int reqWins;
 
 };

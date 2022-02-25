@@ -70,6 +70,11 @@ void APlayerCharacter::BeginPlay()
 		ReConfigureHUD();
 	}
 
+	if (GameStateRef == nullptr)
+	{
+		GameStateRef = Cast<AGameState_Main>(GetWorld()->GetGameState());
+	}
+
 	// Setting up the respawn logic
 	spawnLocation.SetLocation(GetActorLocation());
 	spawnLocation.SetRotation(FQuat(GetActorRotation()));
@@ -84,13 +89,10 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 	{
 		// If we disabled movement initially (or whenever) it can only be set back if the 
 		// game state gets HasGameStarted set back to true
-		AGameState_Main* ref = Cast<AGameState_Main>(GetWorld()->GetGameState());
-		if (ref != nullptr)
+		
+		if (GameStateRef != nullptr && GameStateRef->GetHasGameStarted())
 		{
-			if (ref->GetHasGameStarted())
-			{
-				DisableMovement = false;
-			}
+			DisableMovement = false;
 		}
 	}
 	else if (CheckIfActionable())
@@ -144,7 +146,17 @@ bool APlayerCharacter::GetIsAlive() const
 
 bool APlayerCharacter::CheckIfActionable()
 {
-	// This returns true if the player is alive AND movement is not disabled
+	if (GameStateRef != nullptr)
+	{
+		// If we are in the main game, we check if the game is currently being played
+		// otherwise we are not considered actionable
+		if (!GameStateRef->GetHasGameConcluded() && GameStateRef->GetHasGameStarted())
+		{
+			return isAlive && !DisableMovement;
+		}
+		return false;
+	}
+	// If the state is a nullptr, we just have the standard logic in place
 	return isAlive && !DisableMovement;
 }
 

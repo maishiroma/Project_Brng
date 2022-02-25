@@ -17,6 +17,9 @@ void UMainGameOverlay::NativeOnInitialized()
 	{
 		GameStateRef = Cast<AGameState_Main>(GetWorld()->GetGameState());
 	}
+
+	Loading_BG->SetVisibility(ESlateVisibility::Hidden);
+	Loading_Text->SetVisibility(ESlateVisibility::Hidden);
 }
 
 // Every tick, we update the values of these UI elements
@@ -26,6 +29,7 @@ void UMainGameOverlay::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 	
 	DisplayCountdown();
 	FormatPlayerScores();
+	DisplayWinner();
 }
 
 // Method to display the Game Countdown
@@ -38,7 +42,7 @@ void UMainGameOverlay::DisplayCountdown()
 			switch (GameStateRef->GetCurrCoundDown())
 			{
 				case 2:
-					Countdown_Text->SetText(FText::FromString("Round Something!"));
+					Countdown_Text->SetText(FText::FromString("It's getting Tough!"));
 					break;
 				case 1:
 					Countdown_Text->SetText(FText::FromString("Ready..."));
@@ -77,4 +81,24 @@ void UMainGameOverlay::ClearHUD()
 {
 	GetWorld()->GetTimerManager().ClearTimer(MemberTimerHandle);
 	Countdown_Text->SetText(FText::FromString(""));
+}
+
+// If the winner has been decided, we change the HUD to reflect it
+void UMainGameOverlay::DisplayWinner()
+{
+	if (GameStateRef != nullptr && GameStateRef->GetHasGameConcluded() == true)
+	{
+		FString message = "A Winner is\n";
+		message.Append(GameStateRef->GetGameWinnerName());
+		Countdown_Text->SetText(FText::FromString(message));
+
+		// Once we hit a specific threshold in the game state timer, we cut to the loading screen
+		if (GameStateRef->GetCurrCoundDown() <= 1)
+		{
+			Countdown_Text->SetText(FText::FromString(""));
+			Loading_BG->SetVisibility(ESlateVisibility::Visible);
+			Loading_Text->SetVisibility(ESlateVisibility::Visible);
+			Loading_Text->SetText(FText::FromString("Now Loading..."));
+		}
+	}
 }

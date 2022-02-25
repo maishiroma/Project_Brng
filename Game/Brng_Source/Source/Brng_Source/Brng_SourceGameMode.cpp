@@ -2,8 +2,10 @@
 
 #include "Brng_SourceGameMode.h"
 #include "PlayerCharacter.h"
+#include "GameState_Main.h"
+#include "MainPlayerState.h"
 
-// Constructorr
+// Constructor
 ABrng_SourceGameMode::ABrng_SourceGameMode()
 {
 	DefaultPawnClass = APlayerCharacter::StaticClass();	
@@ -17,7 +19,33 @@ void ABrng_SourceGameMode::BeginPlay()
 {
 	// Finds and sets all of the spawn locations for the GameMode to use
 	UGameplayStatics::GetAllActorsWithTag(this, FName("SpawnLocation"), spawnLocations);
+
+	if (GameStateRef == nullptr)
+	{
+		GameStateRef = Cast<AGameState_Main>(GetWorld()->GetGameState());
+	}
 }
+
+// Tick that runs code on every tick
+void ABrng_SourceGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// We check to see if we have a winner during the match
+	if (GameStateRef != nullptr && GameStateRef->GetHasGameConcluded() == false)
+	{
+		for (APlayerState* curr : GameStateRef->PlayerArray)
+		{
+			AMainPlayerState* playerstate = Cast<AMainPlayerState>(curr);
+			if (playerstate != nullptr && playerstate->numbWins == GameStateRef->reqWins)
+			{
+				GameStateRef->SetGameWinnerName(playerstate->GetPlayerName());
+				break;
+			}
+		}
+	}
+}
+
 
 // Function that actually respawns and possesses the new character with the passed in controller
 void ABrng_SourceGameMode::PossessNewPlayer(AController* controller, FTransform location)
