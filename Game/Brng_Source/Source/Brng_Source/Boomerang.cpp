@@ -3,6 +3,8 @@
 
 #include "Boomerang.h"
 #include "PlayerCharacter.h"
+#include "MainPlayerState.h"
+
 
 // Sets default values
 ABoomerang::ABoomerang()
@@ -125,6 +127,16 @@ void ABoomerang::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor
 			else
 			{
 				test->DamagePlayer(increasedPower);
+			}
+
+			// The target is dead, so we award the person who throw the boomerang a kill
+			if (test->GetCurrHealth() <= 0)
+			{
+				AMainPlayerState* ref = Cast<AMainPlayerState>(originalThrower->GetPlayerState());
+				if (ref != nullptr)
+				{					
+					ref->numbWins += 1;
+				}
 			}
 		}
 	}

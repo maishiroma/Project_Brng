@@ -22,16 +22,19 @@
 #include "Math/BigInt.h" 
 #include "PlayerCharacter.generated.h"
 
-// Forward ddeclare these in the header
+// Forward declare these in the header
 class ABoomerang;
 class AMulti_Camera;
-class UCustomPlayerHUD;
+class AGameState_Main;
 
 UCLASS()
 class BRNG_SOURCE_API APlayerCharacter : public APaperCharacter
 {
 private:
 	GENERATED_BODY()
+
+	// Reference to the main game state
+	AGameState_Main* GameStateRef;
 
 	// Is the player holding down the shoot button?
 	UPROPERTY(Replicated)
@@ -91,14 +94,19 @@ private:
 	AMulti_Camera* PlayerCam;
 	
 	// Pointer to current spawned Player UI Widget
-	UCustomPlayerHUD* PlayerHUD;
+	UUserWidget* PlayerHUD;
+
+	UUserWidget* MainGameHUD;
 
 protected:
 
 	// To use UMG in codde, you need to add the module to the projectName.Build.cs file
 	// https://nerivec.github.io/old-ue4-wiki/pages/umg-referencing-umg-widgets-in-code.html
 	UPROPERTY(EditAnywhere, Category = "HUD")
-		TSubclassOf<class UCustomPlayerHUD> PlayerHUDClass;
+		TSubclassOf<class UUserWidget> PlayerHUDClass;
+
+	UPROPERTY(EditAnywhere, Category = "HUD")
+		TSubclassOf<class UUserWidget> MainGameOverlayClass;
 
 	// Ref to what camera blueprint to use
 	UPROPERTY(EditAnywhere, Category = "Camera")
@@ -161,6 +169,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0", ClampMax = "100.0"))
 		float chargeMoveSlowFactor;
 
+	// Helper check to see if the player can move or do anything
+	bool CheckIfActionable();
+
 	// This is a little tricky, so to make a server RPC, we need to know what function we want to use and make sure
 	// That function has the following methods with the EXACT names as shown here
 	// Server (prefix) and _Validate / _Implementation
@@ -205,6 +216,10 @@ public:
 	float GetMaxEnergy() const;
 	float GetMaxHealth() const;
 	bool GetIsAlive() const;
+
+	// If true, the player controls will be disabled when the player possesses this
+	UPROPERTY(Replicated, EditAnywhere, Category = "Movement")
+		bool DisableMovement;
 
 	// Sets up the HUD for the player
 	void ReConfigureHUD();

@@ -7,6 +7,8 @@
 #include "Multi_Camera.h"
 #include "CustomPlayerHUD.h"
 #include "Brng_SourceGameMode.h"
+#include "GameState_Main.h"
+
 
 APlayerCharacter::APlayerCharacter()
 {	
@@ -68,6 +70,11 @@ void APlayerCharacter::BeginPlay()
 		ReConfigureHUD();
 	}
 
+	if (GameStateRef == nullptr)
+	{
+		GameStateRef = Cast<AGameState_Main>(GetWorld()->GetGameState());
+	}
+
 	// Setting up the respawn logic
 	spawnLocation.SetLocation(GetActorLocation());
 	spawnLocation.SetRotation(FQuat(GetActorRotation()));
@@ -78,7 +85,17 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (isAlive)
+	if (DisableMovement == true)
+	{
+		// If we disabled movement initially (or whenever) it can only be set back if the 
+		// game state gets HasGameStarted set back to true
+		
+		if (GameStateRef != nullptr && GameStateRef->GetHasGameStarted())
+		{
+			DisableMovement = false;
+		}
+	}
+	else if (CheckIfActionable())
 	{
 		if (isHolding)
 		{
@@ -99,6 +116,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
 		}
 	}
 }
+
 
 // Getters
 float APlayerCharacter::GetCurrHealth() const
@@ -126,20 +144,48 @@ bool APlayerCharacter::GetIsAlive() const
 	return isAlive;
 }
 
+bool APlayerCharacter::CheckIfActionable()
+{
+	if (GameStateRef != nullptr)
+	{
+		// If we are in the main game, we check if the game is currently being played
+		// otherwise we are not considered actionable
+		if (!GameStateRef->GetHasGameConcluded() && GameStateRef->GetHasGameStarted())
+		{
+			return isAlive && !DisableMovement;
+		}
+		return false;
+	}
+	// If the state is a nullptr, we just have the standard logic in place
+	return isAlive && !DisableMovement;
+}
+
 void APlayerCharacter::ReConfigureHUD()
 {
 	if (PlayerHUDClass != nullptr)
 	{
-		PlayerHUD = CreateWidget<UCustomPlayerHUD>(GetWorld(), PlayerHUDClass);
-		PlayerHUD->owningPlayer = this;
+		PlayerHUD = CreateWidget<UUserWidget>(GetWorld(), PlayerHUDClass);
+
+		// This allows us to do specific things with specific type of HUDs
+		if (PlayerHUD->IsA(UCustomPlayerHUD::StaticClass()))
+		{
+			Cast<UCustomPlayerHUD>(PlayerHUD)->owningPlayer = this;
+		}
+		
 		PlayerHUD->AddToViewport();
+	}
+
+	if (MainGameOverlayClass != nullptr)
+	{
+		MainGameHUD = CreateWidget<UUserWidget>(GetWorld(), MainGameOverlayClass);
+		MainGameHUD->AddToViewport();
 	}
 }
 
 // Using the passed in movement, we turn the player around
 void APlayerCharacter::TurnPlayer(float MoveDir)
 {
-	if (isAlive) 
+	if (CheckIfActionable()) 
 	{
 		// We need to create an instance of this first so we can use the sign function
 		TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
@@ -156,7 +202,7 @@ bool APlayerCharacter::Server_TurnPlayer_Validate(float MoveDir)
 // Server RPC to call this onto the server as well
 void APlayerCharacter::Server_TurnPlayer_Implementation(float MoveDir)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		TBigInt<64, true> converter = FMath::FloorToInt(MoveDir);
 		currForwardDirection = converter.Sign();
@@ -166,7 +212,7 @@ void APlayerCharacter::Server_TurnPlayer_Implementation(float MoveDir)
 // Handles's the player movement
 void APlayerCharacter::MoveHorizontal(float Value)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		// If the player is charging, they slow down drastically
 		if (Value != 0.0f)
@@ -207,7 +253,7 @@ void APlayerCharacter::SetCurrBoomerangNull()
 // To replicate, make sure replicates and replicate movement are toggled in BP (server -> client)
 void APlayerCharacter::ThrowBoomerang()
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		if (NormalBoomerangClass != nullptr && CheckIfEnoughEnergy(throwEnergyCost))
 		{
@@ -250,7 +296,7 @@ bool APlayerCharacter::Server_ThrowBoomerang_Validate(FTransform boomerangSpawnT
 // Server RPC Function; This spawns the projectile onto the server
 void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(NormalBoomerangClass, boomerangSpawnTransform);
 		currBoomerang->Initialize(throwSpeed, currForwardDirection, this, false);
@@ -261,7 +307,7 @@ void APlayerCharacter::Server_ThrowBoomerang_Implementation(FTransform boomerang
 // Handles the logic for power boomerangs
 void APlayerCharacter::ThrowPowerBoomerang()
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		if (PowerBoomerangClass != nullptr)
 		{
@@ -318,7 +364,7 @@ bool APlayerCharacter::Server_ThrowPowerBoomerang_Validate(FTransform boomerangS
 // Server RPC to throw the power boomerang
 void APlayerCharacter::Server_ThrowPowerBoomerang_Implementation(FTransform boomerangSpawnTransform)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		currBoomerang = GetWorld()->SpawnActorDeferred<ABoomerang>(PowerBoomerangClass, boomerangSpawnTransform);
 		currBoomerang->Initialize(throwSpeed * 2.0f, currForwardDirection, this, true);
@@ -338,7 +384,7 @@ void APlayerCharacter::ControlBoomerangHeight(float Value)
 	else
 	{
 		// On Server
-		if (isAlive)
+		if (CheckIfActionable())
 		{
 			if (currBoomerang != nullptr)
 			{
@@ -357,7 +403,7 @@ bool APlayerCharacter::Server_ControlBoomerangHeight_Validate(float Value)
 // Server RPC that is called on client to run this on the server
 void APlayerCharacter::Server_ControlBoomerangHeight_Implementation(float Value)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		if (currBoomerang != nullptr)
 		{
@@ -398,7 +444,7 @@ bool APlayerCharacter::CheckIfEnoughEnergy(float cost)
 // Note that only the server runs this
 void APlayerCharacter::KillPlayer()
 {
-	if (isAlive == true)
+	if (CheckIfActionable() == true)
 	{
 		isAlive = false;
 		
@@ -426,7 +472,7 @@ bool APlayerCharacter::Server_KillPlayer_Validate()
 // Server RPC to call this on all other clients
 void APlayerCharacter::Server_KillPlayer_Implementation()
 {
-	if (isAlive == true)
+	if (CheckIfActionable() == true)
 	{
 		isAlive = false;
 
@@ -439,7 +485,7 @@ void APlayerCharacter::Server_KillPlayer_Implementation()
 // Damages the player. If the player health reaches 0, they die
 void APlayerCharacter::DamagePlayer(float modder)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		if (!HasAuthority())
 		{
@@ -468,7 +514,7 @@ bool APlayerCharacter::Server_DamagePlayer_Validate(float modder)
 // Server RPC to update the server on the health
 void APlayerCharacter::Server_DamagePlayer_Implementation(float modder)
 {
-	if (isAlive)
+	if (CheckIfActionable())
 	{
 		currHealth = FMath::Clamp(currHealth - modder, 0.0f, maxHealth);
 		if (currHealth <= 0.0f)
@@ -493,6 +539,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& O
 	DOREPLIFETIME(APlayerCharacter, currHealth);
 	DOREPLIFETIME(APlayerCharacter, maxHealth);
 	DOREPLIFETIME(APlayerCharacter, isAlive);
+	DOREPLIFETIME(APlayerCharacter, DisableMovement);
 	DOREPLIFETIME(APlayerCharacter, spawnLocation);
 	DOREPLIFETIME(APlayerCharacter, currBoomerang);
 }
